@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">iTantra Voice</string>
+    <string name="title_header">iTantra On-Device Speech (Phase 8.1)</string>
+    <string name="subtitle">Offline Multilingual Communication</string>
+    <string name="label_language">Target Language:</string>
+    <string name="label_model">Model Engine:</string>
+    <string name="status_model_idle">Model: Not Loaded</string>
+    <string name="status_mic_waiting">Microphone: Permission Required</string>
+    <string name="btn_start_listening">START LISTENING</string>
+    <string name="btn_stop_listening">STOP LISTENING</string>
+    <string name="status_idle">Status: Idle (Ready)</string>
+    <string name="status_listening">Status: Listening for speech...</string>
+    <string name="status_speech_detected">Status: Speech active (utterance building)...</string>
+    <string name="status_transcribing">Status: Transcribing utterance on-device...</string>
+    <string name="label_transcript">Transcript:</string>
+    <string name="default_transcript_placeholder">Speak into the microphone to view real-time on-device transcription...</string>
+    <string name="label_metrics">Performance Metrics:</string>
+    <string name="metric_latency">STT Latency: — ms</string>
+    <string name="metric_rtf">Real-Time Factor: —</string>
+    <string name="metric_ram">Process RAM: — MB</string>
+    <string name="metric_audio_duration">Audio Duration: — s</string>
+</resources>

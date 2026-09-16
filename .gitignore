@@ -1,0 +1,53 @@
+# ==========================================
+# Python Environments & Caches
+# ==========================================
+venv*/
+.env
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+
+# ==========================================
+# Android & Gradle Build Artifacts
+# ==========================================
+.gradle/
+build/
+android/.gradle/
+android/build/
+android/app/build/
+*.apk
+*.aab
+*.ap_
+output.wav
+
+# Android Studio / IntelliJ IDE
+.idea/
+*.iml
+.DS_Store
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ==========================================
+# Temporary Files & Scratch
+# ==========================================
+scratch/
+dataset/
+*.log
+
+# ==========================================
+# Large AI Models (>100MB strictly blocked by GitHub)
+# Downloaded via scripts/download_models.py
+# ==========================================
+android/app/src/main/assets/models/*.onnx
+android/app/src/main/assets/models/tts/*.onnx
+android/app/src/main/assets/models/.cache/
