@@ -57,6 +57,7 @@ import org.itantra.speech.vad.DualGateVad
 import org.itantra.speech.vad.UtteranceSegmenter
 import org.itantra.speech.interaction.PttStateMachine
 import org.itantra.speech.interaction.ContinuousConversationController
+import org.itantra.speech.interaction.PhoneCallController
 import org.itantra.speech.pack.LanguagePackManifest
 import org.itantra.speech.pack.LanguagePackRepository
 import org.itantra.speech.pack.LanguagePackDownloader
@@ -182,7 +183,8 @@ class MainActivity : AppCompatActivity() {
     enum class VoiceInteractionMode {
         PUSH_TO_TALK,
         AUTO_TRANSMIT,
-        CONTINUOUS_CONVERSATION
+        CONTINUOUS_CONVERSATION,
+        PHONE_CALL
     }
     private var activeVoiceMode = VoiceInteractionMode.PUSH_TO_TALK
 
@@ -193,6 +195,10 @@ class MainActivity : AppCompatActivity() {
 
     // Continuous Conversation Components (Phase 8.9)
     private lateinit var conversationController: ContinuousConversationController
+
+    // Phone Call Components
+    private lateinit var phoneCallController: PhoneCallController
+    private lateinit var rbModePhoneCall: RadioButton
     private lateinit var rbModeContinuous: RadioButton
 
     private lateinit var rgVoiceMode: RadioGroup
@@ -232,6 +238,7 @@ class MainActivity : AppCompatActivity() {
         activeTransport = wifiTransport
 
         conversationController = ContinuousConversationController(lifecycleScope, settlingDelayMs = 200L)
+        phoneCallController = PhoneCallController(lifecycleScope, settlingDelayMs = 150L)
 
         initViews()
         setupLanguageSpinner()
@@ -243,6 +250,7 @@ class MainActivity : AppCompatActivity() {
         setupBluetoothCallbacks()
         setupPttCallbacks()
         setupConversationCallbacks()
+        setupPhoneCallCallbacks()
         setupPttTouchListener()
     }
 
@@ -267,10 +275,11 @@ class MainActivity : AppCompatActivity() {
         tvLog = findViewById(R.id.tvLog)
         val btnClearTranscript: Button = findViewById(R.id.btnClearTranscript)
 
-        // Voice Interaction UI bindings (Phase 8.8 & 8.9)
+        // Voice Interaction UI bindings (Phase 8.8, 8.9, & Phone Call)
         rgVoiceMode = findViewById(R.id.rgVoiceMode)
         rbModePtt = findViewById(R.id.rbModePtt)
         rbModeAuto = findViewById(R.id.rbModeAuto)
+        rbModePhoneCall = findViewById(R.id.rbModePhoneCall)
         rbModeContinuous = findViewById(R.id.rbModeContinuous)
         tvPttTransportStatus = findViewById(R.id.tvPttTransportStatus)
         tvPttTurnIndicator = findViewById(R.id.tvPttTurnIndicator)
@@ -288,6 +297,10 @@ class MainActivity : AppCompatActivity() {
             // Safely stop any active interaction mode before switching
             if (conversationController.isConversationActive) {
                 conversationController.stopConversation()
+            }
+            if (phoneCallController.isCallActive) {
+                phoneCallController.stopCall()
+                utteranceSegmenter.bargeInMode = false
             }
             if (audioRecorder.isActive) {
                 stopListening()
@@ -319,6 +332,15 @@ class MainActivity : AppCompatActivity() {
                     tvPttHint.text = getString(R.string.conv_hint)
                     updateContinuousUi(conversationController.state, conversationController.turn)
                     Log.i(TAG, "Voice interaction mode: Continuous Conversation")
+                }
+                R.id.rbModePhoneCall -> {
+                    activeVoiceMode = VoiceInteractionMode.PHONE_CALL
+                    isPttModeActive = false
+                    btnToggleListening.visibility = View.GONE
+                    btnPushToTalk.visibility = View.VISIBLE
+                    tvPttHint.text = getString(R.string.call_hint)
+                    updatePhoneCallUi(phoneCallController.state, phoneCallController.turn)
+                    Log.i(TAG, "Voice interaction mode: Phone Call")
                 }
             }
         }
@@ -520,6 +542,7 @@ class MainActivity : AppCompatActivity() {
                     updatePttTransportDisplay("🌐 Wi-Fi", isConn)
                     pttStateMachine.setTransportConnected(isConn)
                     conversationController.setTransportConnected(isConn)
+                    phoneCallController.setTransportConnected(isConn)
                     Log.i(TAG, "Transport mode switched to Wi-Fi (connected=$isConn)")
                 }
                 R.id.rbBluetooth -> {
@@ -531,6 +554,7 @@ class MainActivity : AppCompatActivity() {
                     updatePttTransportDisplay(label, isConn)
                     pttStateMachine.setTransportConnected(isConn)
                     conversationController.setTransportConnected(isConn)
+                    phoneCallController.setTransportConnected(isConn)
                     Log.i(TAG, "Transport mode switched to Bluetooth (connected=$isConn)")
                 }
             }
@@ -987,8 +1011,12 @@ class MainActivity : AppCompatActivity() {
                 tvSchedulerState.text = "Scheduler: $state | Cache: $count/4 Ready (${sizeKb}KB)"
 
                 // If scheduler starts playing, pause listening and lock out mic to avoid acoustic feedback
+                // BUT in PHONE_CALL mode, mic remains active for full-duplex conversation with barge-in support!
                 if (state != PlaybackState.IDLE) {
-                    if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
+                    if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                        phoneCallController.onRemoteTtsStarted()
+                        utteranceSegmenter.bargeInMode = true
+                    } else if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
                         conversationController.onRemoteTtsStarted()
                     } else {
                         pttStateMachine.transitionTo(PttStateMachine.State.PLAYING)
@@ -999,7 +1027,10 @@ class MainActivity : AppCompatActivity() {
                     }
                 } else {
                     // Resumed to IDLE
-                    if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
+                    if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                        utteranceSegmenter.bargeInMode = false
+                        phoneCallController.onRemoteTtsFinished()
+                    } else if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
                         conversationController.onRemoteTtsFinished()
                     } else {
                         pttStateMachine.transitionTo(
@@ -1125,7 +1156,9 @@ class MainActivity : AppCompatActivity() {
 
         utteranceSegmenter.onSpeechStateChanged = { isSpeech ->
             runOnUiThread {
-                if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
+                if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                    phoneCallController.onSpeechDetected(isSpeech)
+                } else if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
                     conversationController.onSpeechDetected(isSpeech)
                 }
                 if (audioRecorder.isActive) {
@@ -1142,7 +1175,9 @@ class MainActivity : AppCompatActivity() {
 
         utteranceSegmenter.onUtteranceFinalized = { utterance ->
             Log.i(TAG, "Utterance finalized: ${utterance.durationMs}ms (${utterance.pcmData.size} bytes). Transcribing...")
-            if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
+            if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                phoneCallController.onUtteranceFinalized()
+            } else if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
                 conversationController.onUtteranceFinalized()
             }
 
@@ -1182,6 +1217,11 @@ class MainActivity : AppCompatActivity() {
                             tvTranscript.text = newFullText
 
                             when (activeVoiceMode) {
+                                VoiceInteractionMode.PHONE_CALL -> {
+                                    Log.i(TAG, "Phone Call: STT complete: '${result.text}'. Transmitting...")
+                                    phoneCallController.onSttComplete(hasValidText = true)
+                                    sendPhoneCallMessage(result.text, result.audioDurationSec.toFloat())
+                                }
                                 VoiceInteractionMode.CONTINUOUS_CONVERSATION -> {
                                     Log.i(TAG, "Conversation: STT complete: '${result.text}'. Transmitting...")
                                     conversationController.onSttComplete(hasValidText = true)
@@ -1201,7 +1241,9 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         } else {
-                            if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
+                            if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                                phoneCallController.onSttComplete(hasValidText = false)
+                            } else if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
                                 conversationController.onSttComplete(hasValidText = false)
                             } else if (isPttModeActive || isPttUtterancePending) {
                                 isPttUtterancePending = false
@@ -1212,7 +1254,9 @@ class MainActivity : AppCompatActivity() {
                         tvMetricRtf.text = "RTF: %.3f".format(result.rtf)
                         tvMetricAudioDuration.text = "Audio: %.2f s".format(result.audioDurationSec)
                     } else {
-                        if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
+                        if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                            phoneCallController.onSttComplete(hasValidText = false)
+                        } else if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
                             conversationController.onSttComplete(hasValidText = false)
                         } else if (isPttModeActive || isPttUtterancePending) {
                             isPttUtterancePending = false
@@ -1301,6 +1345,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("🌐 Wi-Fi", connected = false)
                             pttStateMachine.setTransportConnected(false)
                             conversationController.setTransportConnected(false)
+                            phoneCallController.setTransportConnected(false)
                         }
                     }
                     ConnectionState.HOSTING -> {
@@ -1314,6 +1359,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("🌐 Wi-Fi (Hosting)", connected = false)
                             pttStateMachine.setTransportConnected(false)
                             conversationController.setTransportConnected(false)
+                            phoneCallController.setTransportConnected(false)
                         }
                     }
                     ConnectionState.CONNECTING -> {
@@ -1327,6 +1373,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("🌐 Wi-Fi (Connecting)", connected = false)
                             pttStateMachine.setTransportConnected(false)
                             conversationController.setTransportConnected(false)
+                            phoneCallController.setTransportConnected(false)
                         }
                     }
                     ConnectionState.CONNECTED -> {
@@ -1340,6 +1387,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("🌐 Wi-Fi", connected = true)
                             pttStateMachine.setTransportConnected(true)
                             conversationController.setTransportConnected(true)
+                            phoneCallController.setTransportConnected(true)
                         }
 
                         // Perform initial ping-pong transport measurement
@@ -1359,6 +1407,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("🌐 Wi-Fi", connected = false)
                             pttStateMachine.setTransportConnected(false)
                             conversationController.setTransportConnected(false)
+                            phoneCallController.setTransportConnected(false)
                         }
                     }
                     ConnectionState.SEARCHING -> {
@@ -1528,6 +1577,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("📶 Bluetooth", connected = false)
                             pttStateMachine.setTransportConnected(false)
                             conversationController.setTransportConnected(false)
+                            phoneCallController.setTransportConnected(false)
                         }
                     }
                     ConnectionState.SEARCHING -> {
@@ -1541,6 +1591,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("📶 Bluetooth (Searching)", connected = false)
                             pttStateMachine.setTransportConnected(false)
                             conversationController.setTransportConnected(false)
+                            phoneCallController.setTransportConnected(false)
                         }
                     }
                     ConnectionState.HOSTING -> {
@@ -1554,6 +1605,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("📶 Bluetooth (Hosting)", connected = false)
                             pttStateMachine.setTransportConnected(false)
                             conversationController.setTransportConnected(false)
+                            phoneCallController.setTransportConnected(false)
                         }
                     }
                     ConnectionState.CONNECTING -> {
@@ -1567,6 +1619,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("📶 Bluetooth (Connecting)", connected = false)
                             pttStateMachine.setTransportConnected(false)
                             conversationController.setTransportConnected(false)
+                            phoneCallController.setTransportConnected(false)
                         }
                     }
                     ConnectionState.CONNECTED -> {
@@ -1583,6 +1636,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("📶 BT ($deviceName)", connected = true)
                             pttStateMachine.setTransportConnected(true)
                             conversationController.setTransportConnected(true)
+                            phoneCallController.setTransportConnected(true)
                         }
 
                         // Perform initial ping-pong transport measurement
@@ -1602,6 +1656,7 @@ class MainActivity : AppCompatActivity() {
                             updatePttTransportDisplay("📶 Bluetooth", connected = false)
                             pttStateMachine.setTransportConnected(false)
                             conversationController.setTransportConnected(false)
+                            phoneCallController.setTransportConnected(false)
                         }
                     }
                 }
@@ -1798,6 +1853,28 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("ClickableViewAccessibility")
     private fun setupPttTouchListener() {
         btnPushToTalk.setOnTouchListener { _, event ->
+            // Phone Call Mode tap toggle
+            if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                if (event.action == MotionEvent.ACTION_UP) {
+                    if (phoneCallController.isCallActive) {
+                        phoneCallController.stopCall()
+                        utteranceSegmenter.bargeInMode = false
+                    } else {
+                        if (!phoneCallController.isTransportConnected) {
+                            Toast.makeText(this, getString(R.string.ptt_not_connected), Toast.LENGTH_SHORT).show()
+                        } else if (!checkPermissions()) {
+                            // Permission requested by checkPermissions()
+                        } else {
+                            val started = phoneCallController.startCall()
+                            if (!started) {
+                                Toast.makeText(this, getString(R.string.ptt_not_connected), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+                return@setOnTouchListener true
+            }
+
             // Phase 8.9: Continuous Hands-Free Conversation Mode tap toggle
             if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
                 if (event.action == MotionEvent.ACTION_UP) {
@@ -2144,6 +2221,209 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // Phone Call Mode Implementation & Helpers
+    // ════════════════════════════════════════════════════════════════════════
+
+    private fun setupPhoneCallCallbacks() {
+        phoneCallController.onStateChanged = { state, turn ->
+            runOnUiThread {
+                if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                    updatePhoneCallUi(state, turn)
+                }
+            }
+        }
+
+        phoneCallController.onRequestResumeListening = {
+            runOnUiThread {
+                if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                    if (!audioRecorder.isActive) {
+                        startListening()
+                    }
+                }
+            }
+        }
+
+        phoneCallController.onRequestPauseListening = {
+            runOnUiThread {
+                if (audioRecorder.isActive) {
+                    stopListening()
+                }
+            }
+        }
+
+        phoneCallController.onRequestStopRemoteTts = {
+            runOnUiThread {
+                utteranceSegmenter.bargeInMode = false
+                priorityScheduler.stop()
+                audioTrackPlayer.stop()
+                Toast.makeText(this, "⚡ Interrupted remote speaker", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun updatePhoneCallUi(
+        state: PhoneCallController.State,
+        turn: PhoneCallController.Turn
+    ) {
+        if (activeVoiceMode != VoiceInteractionMode.PHONE_CALL) return
+
+        // Turn Indicator Pill
+        when (turn) {
+            PhoneCallController.Turn.YOUR_TURN -> {
+                tvPttTurnIndicator.text = getString(R.string.call_turn_calling)
+                tvPttTurnIndicator.setTextColor(getColor(R.color.phone_call_accent))
+            }
+            PhoneCallController.Turn.YOU_SPEAKING -> {
+                tvPttTurnIndicator.text = getString(R.string.ptt_turn_speaking)
+                tvPttTurnIndicator.setTextColor(getColor(R.color.accent_red))
+            }
+            PhoneCallController.Turn.PROCESSING -> {
+                tvPttTurnIndicator.text = "⏳ Processing"
+                tvPttTurnIndicator.setTextColor(getColor(R.color.accent))
+            }
+            PhoneCallController.Turn.SENDING -> {
+                tvPttTurnIndicator.text = "📤 Sending"
+                tvPttTurnIndicator.setTextColor(getColor(R.color.accent))
+            }
+            PhoneCallController.Turn.REMOTE_SPEAKING -> {
+                tvPttTurnIndicator.text = getString(R.string.ptt_turn_remote)
+                tvPttTurnIndicator.setTextColor(0xFFF59E0B.toInt())
+            }
+            PhoneCallController.Turn.INTERRUPTED -> {
+                tvPttTurnIndicator.text = getString(R.string.call_turn_barging_in)
+                tvPttTurnIndicator.setTextColor(getColor(R.color.phone_call_barge_in))
+            }
+            PhoneCallController.Turn.OFFLINE -> {
+                tvPttTurnIndicator.text = getString(R.string.ptt_turn_offline)
+                tvPttTurnIndicator.setTextColor(0xFFEF4444.toInt())
+            }
+            PhoneCallController.Turn.ERROR -> {
+                tvPttTurnIndicator.text = "❌ Error"
+                tvPttTurnIndicator.setTextColor(0xFFEF4444.toInt())
+            }
+        }
+
+        // State Banner & Action Button
+        when (state) {
+            PhoneCallController.State.DISCONNECTED -> {
+                tvPttStateBanner.text = "State: DISCONNECTED (Connect Wi-Fi or Bluetooth)"
+                tvPttStateBanner.setBackgroundColor(0xFF1E293B.toInt())
+                btnPushToTalk.text = getString(R.string.call_start)
+                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF475569.toInt())
+                btnPushToTalk.isEnabled = true
+            }
+            PhoneCallController.State.IDLE -> {
+                tvPttStateBanner.text = "State: IDLE (Tap to start phone call)"
+                tvPttStateBanner.setBackgroundColor(0xFF1E293B.toInt())
+                btnPushToTalk.text = getString(R.string.call_start)
+                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF10B981.toInt())
+                btnPushToTalk.isEnabled = true
+            }
+            PhoneCallController.State.LISTENING -> {
+                tvPttStateBanner.text = getString(R.string.call_state_listening)
+                tvPttStateBanner.setBackgroundColor(0xFF065F46.toInt())
+                btnPushToTalk.text = getString(R.string.call_stop)
+                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
+                btnPushToTalk.isEnabled = true
+            }
+            PhoneCallController.State.SPEECH_DETECTED -> {
+                tvPttStateBanner.text = "🔴 State: SPEECH DETECTED (Capturing utterance...)"
+                tvPttStateBanner.setBackgroundColor(0xFF991B1B.toInt())
+                btnPushToTalk.text = getString(R.string.call_stop)
+                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
+                btnPushToTalk.isEnabled = true
+            }
+            PhoneCallController.State.PROCESSING_STT -> {
+                tvPttStateBanner.text = getString(R.string.call_state_processing)
+                tvPttStateBanner.setBackgroundColor(0xFF312E81.toInt())
+                btnPushToTalk.text = getString(R.string.call_stop)
+                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
+                btnPushToTalk.isEnabled = true
+            }
+            PhoneCallController.State.SENDING -> {
+                tvPttStateBanner.text = getString(R.string.call_state_sending)
+                tvPttStateBanner.setBackgroundColor(0xFF047857.toInt())
+                btnPushToTalk.text = getString(R.string.call_stop)
+                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
+                btnPushToTalk.isEnabled = true
+            }
+            PhoneCallController.State.PLAYING_REMOTE -> {
+                tvPttStateBanner.text = getString(R.string.call_state_playing)
+                tvPttStateBanner.setBackgroundColor(0xFF78350F.toInt())
+                btnPushToTalk.text = getString(R.string.call_stop)
+                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
+                btnPushToTalk.isEnabled = true
+            }
+            PhoneCallController.State.INTERRUPTED -> {
+                tvPttStateBanner.text = getString(R.string.call_state_interrupted)
+                tvPttStateBanner.setBackgroundColor(0xFFB45309.toInt())
+                btnPushToTalk.text = getString(R.string.call_stop)
+                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
+                btnPushToTalk.isEnabled = true
+            }
+            PhoneCallController.State.RETURNING_TO_LISTEN -> {
+                tvPttStateBanner.text = getString(R.string.call_state_settling)
+                tvPttStateBanner.setBackgroundColor(0xFF334155.toInt())
+                btnPushToTalk.text = getString(R.string.call_stop)
+                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
+                btnPushToTalk.isEnabled = true
+            }
+            PhoneCallController.State.ERROR -> {
+                tvPttStateBanner.text = "❌ State: ERROR"
+                tvPttStateBanner.setBackgroundColor(0xFF7F1D1D.toInt())
+                btnPushToTalk.text = getString(R.string.call_start)
+                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF475569.toInt())
+                btnPushToTalk.isEnabled = true
+            }
+        }
+    }
+
+    private fun sendPhoneCallMessage(text: String, audioDurationSec: Float) {
+        val transport = activeTransport
+        val langCode = languageManager.activeLanguage.code
+        val message = AudioMessage.createNormal(text, langCode)
+
+        if (transport == null || !transport.isConnected()) {
+            Log.w(TAG, "PhoneCall: Send failed - transport unavailable")
+            appendConversationLog("⚠ [Not Sent] You: $text (Transport disconnected)")
+            phoneCallController.onSttComplete(hasValidText = false)
+            return
+        }
+
+        val transportName = if (transport is WifiSocketTransport) "Wi-Fi" else "Bluetooth"
+        Log.i(TAG, "PhoneCall: Sending via $transportName")
+
+        lifecycleScope.launch {
+            try {
+                val sendDurationMs = transport.send(message)
+                val serializedBytes = MessageProtocol.serializeMessage(message).size
+                val savings = MessageProtocol.calculateSavings(serializedBytes, audioDurationSec)
+
+                Log.i(TAG, "PhoneCall: Message sent in ${sendDurationMs}ms ($serializedBytes bytes)")
+                runOnUiThread {
+                    appendConversationLog("You: $text")
+                    if (transport is WifiSocketTransport) {
+                        appendChatLog("📤 [Call] ${message.text.take(40)}...")
+                        tvWifiMetricPayload.text = savings.formattedSummary
+                        tvWifiMetricLatency.text = "Sender send: ${sendDurationMs} ms | Frame: ${serializedBytes} B"
+                    } else if (transport is BluetoothTextTransport) {
+                        appendBtChatLog("📤 BT [Call] ${message.text.take(40)}...")
+                        tvBtMetricPayload.text = savings.formattedSummary
+                        tvBtMetricLatency.text = "Sender send: ${sendDurationMs} ms | Frame: ${serializedBytes} B"
+                    }
+                    phoneCallController.onMessageSent()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "PhoneCall: Send exception", e)
+                runOnUiThread {
+                    appendConversationLog("⚠ [Failed] You: $text (${e.message})")
+                    phoneCallController.onSttComplete(hasValidText = false)
+                }
+            }
+        }
+    }
+
     private fun appendBtChatLog(entry: String) {
         val current = tvBtChatLog.text.toString()
         val lines = current.split("\n").takeLast(5)
@@ -2177,6 +2457,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         conversationController.stopConversation()
+        phoneCallController.stopCall()
         stopListening()
         sttBackend.release()
         audioTrackPlayer.release()

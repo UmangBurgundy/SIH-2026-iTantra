@@ -14,4 +14,6 @@
     <color name="ptt_idle_bg">#0284C7</color>
     <color name="ptt_playing_bg">#D97706</color>
     <color name="ptt_card_border">#0EA5E9</color>
+    <color name="phone_call_accent">#10B981</color>
+    <color name="phone_call_barge_in">#F59E0B</color>
 </resources>

@@ -78,6 +78,7 @@ Final Disk Artifact (ARM64)     290.68 MB (Debug)       226.25 MB (Release)     
 ```
 
 ### Clarification of the 54.7 MB Difference:
+
 1. **Model Layer**: The uncompressed IndicConformer STT asset dropped by **53.87 MB** (from 188.44 MB to 134.57 MB) due to dynamic quantization of 1x1 convolutions and Gather nodes.
 2. **Deflate Compression**: Inside the compressed zip stream, the compressed payload of the asset models dropped to **205.36 MB**.
 3. **Release Packaging**: Enabling R8 minification reduced code DEX from **9.91 MB to 3.48 MB**, producing a final signed release APK of **226.25 MB** (237,236,495 bytes).
@@ -88,19 +89,19 @@ Final Disk Artifact (ARM64)     290.68 MB (Debug)       226.25 MB (Release)     
 
 Deterministic catalog definitions for the 8 downloadable offline language packs in [`LanguagePackRepository.kt`](file:///c:/Users/Asus/OneDrive/Documents/SIH-2026/iTantra/android/app/src/main/java/org/itantra/speech/pack/LanguagePackRepository.kt):
 
-| ID | Language | Native Name | Version | STT Model | STT Size | TTS Model | TTS Size | Total Pack Size |
-| :---: | :--- | :--- | :---: | :--- | :---: | :--- | :---: | :---: |
-| `gu` | Gujarati | ગુજરાતી | `2.0` | `indic-gu.int8.onnx` | 134.4 MB | `mms-guj.int8.onnx` | 36.0 MB | **170.4 MB** |
-| `mr` | Marathi | मराठी | `2.0` | `indic-mr.int8.onnx` | 134.6 MB | `mms-mar.int8.onnx` | 36.0 MB | **170.6 MB** |
-| `kn` | Kannada | ಕನ್ನಡ | `2.0` | `indic-kn.int8.onnx` | 134.2 MB | `mms-kan.int8.onnx` | 35.9 MB | **170.1 MB** |
-| `ml` | Malayalam| മലയാളം | `2.0` | `indic-ml.int8.onnx` | 134.8 MB | `mms-mal.int8.onnx` | 36.1 MB | **170.9 MB** |
-| `ta` | Tamil | தமிழ் | `2.0` | `indic-ta.int8.onnx` | 134.7 MB | `mms-tam.int8.onnx` | 36.0 MB | **170.7 MB** |
-| `te` | Telugu | తెలుగు | `2.0` | `indic-te.int8.onnx` | 134.5 MB | `mms-tel.int8.onnx` | 36.0 MB | **170.5 MB** |
-| `or` | Odia | ଓଡ଼ିଆ | `2.0` | `indic-or.int8.onnx` | 134.1 MB | `mms-ory.int8.onnx` | 35.9 MB | **170.0 MB** |
-| `bn` | Bengali | বাংলা | `2.0` | `indic-bn.int8.onnx` | 134.6 MB | `mms-ben.int8.onnx` | 36.1 MB | **170.7 MB** |
-| **ALL**| **8 Packs** | — | — | — | **1,075.9 MB** | — | **288.0 MB** | **1,363.9 MB (~1.33 GB)** |
+|   ID    | Language    | Native Name | Version | STT Model            |    STT Size    | TTS Model           |   TTS Size   |      Total Pack Size      |
+| :-----: | :---------- | :---------- | :-----: | :------------------- | :------------: | :------------------ | :----------: | :-----------------------: |
+|  `gu`   | Gujarati    | ગુજરાતી     |  `2.0`  | `indic-gu.int8.onnx` |    134.4 MB    | `mms-guj.int8.onnx` |   36.0 MB    |       **170.4 MB**        |
+|  `mr`   | Marathi     | मराठी       |  `2.0`  | `indic-mr.int8.onnx` |    134.6 MB    | `mms-mar.int8.onnx` |   36.0 MB    |       **170.6 MB**        |
+|  `kn`   | Kannada     | ಕನ್ನಡ       |  `2.0`  | `indic-kn.int8.onnx` |    134.2 MB    | `mms-kan.int8.onnx` |   35.9 MB    |       **170.1 MB**        |
+|  `ml`   | Malayalam   | മലയാളം      |  `2.0`  | `indic-ml.int8.onnx` |    134.8 MB    | `mms-mal.int8.onnx` |   36.1 MB    |       **170.9 MB**        |
+|  `ta`   | Tamil       | தமிழ்       |  `2.0`  | `indic-ta.int8.onnx` |    134.7 MB    | `mms-tam.int8.onnx` |   36.0 MB    |       **170.7 MB**        |
+|  `te`   | Telugu      | తెలుగు      |  `2.0`  | `indic-te.int8.onnx` |    134.5 MB    | `mms-tel.int8.onnx` |   36.0 MB    |       **170.5 MB**        |
+|  `or`   | Odia        | ଓଡ଼ିଆ       |  `2.0`  | `indic-or.int8.onnx` |    134.1 MB    | `mms-ory.int8.onnx` |   35.9 MB    |       **170.0 MB**        |
+|  `bn`   | Bengali     | বাংলা       |  `2.0`  | `indic-bn.int8.onnx` |    134.6 MB    | `mms-ben.int8.onnx` |   36.1 MB    |       **170.7 MB**        |
+| **ALL** | **8 Packs** | —           |    —    | —                    | **1,075.9 MB** | —                   | **288.0 MB** | **1,363.9 MB (~1.33 GB)** |
 
-*Download URL Scheme*: Hosted deterministically on Hugging Face HTTPS mirrors (`csukuangfj/sherpa-onnx-nemo-indic-conformer-*` and `facebook/mms-tts-*`). Minimum supported app version: `1.0.0`.
+_Download URL Scheme_: Hosted deterministically on Hugging Face HTTPS mirrors (`csukuangfj/sherpa-onnx-nemo-indic-conformer-*` and `facebook/mms-tts-*`). Minimum supported app version: `1.0.0`.
 
 ---
 
@@ -128,6 +129,7 @@ Storage Safety Status                   PASSED (Occupies < 1.0% of device disk)
 ## 5. Offline Lock Verification (Airplane Mode Execution)
 
 Conducted on **OnePlus Nord CE4 (CPH2767 / Snapdragon 7 Gen 3, Android 14)**:
+
 1. **Network Disconnection**: `cmd connectivity airplane-mode enable` executed via ADB.
    - Cellular radio: DISABLED
    - Wi-Fi Internet: DISABLED
@@ -147,18 +149,18 @@ Conducted on **OnePlus Nord CE4 (CPH2767 / Snapdragon 7 Gen 3, Android 14)**:
 
 Validated with representative native-script phoneme phrases across all 10 scripts:
 
-| Language | Script Phrase | Audio Synthesis (TTS) | Transcription (STT) | Text Transport | Offline Status |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **Hindi** | `नमस्ते` | Clean / Natural | `नमस्ते` (100% Exact) | JSON String | **PASS** ✅ |
-| **English** | `Hello` | Clean / Natural | `Hello` (100% Exact) | JSON String | **PASS** ✅ |
-| **Gujarati** | `નમસ્તે` | Clean / Natural | `નમસ્તે` (100% Exact) | JSON String | **PASS** ✅ |
-| **Marathi** | `नमस्कार` | Clean / Natural | `नमस्कार` (100% Exact) | JSON String | **PASS** ✅ |
-| **Kannada** | `ನಮಸ್ಕಾರ` | Clean / Natural | `ನಮಸ್ಕಾರ` (100% Exact) | JSON String | **PASS** ✅ |
-| **Malayalam**| `നമസ്കാരം`| Clean / Natural | `നമസ്കാരം` (100% Exact)| JSON String | **PASS** ✅ |
-| **Tamil** | `வணக்கம்` | Clean / Natural | `வணக்கம்` (100% Exact) | JSON String | **PASS** ✅ |
-| **Telugu** | `నమస్కారం`| Clean / Natural | `నమస్కారం` (100% Exact)| JSON String | **PASS** ✅ |
-| **Odia** | `ନମସ୍କାର` | Clean / Natural | `ନମସ୍କାର` (100% Exact) | JSON String | **PASS** ✅ |
-| **Bengali** | `নমস্কার` | Clean / Natural | `নমস্কার` (100% Exact) | JSON String | **PASS** ✅ |
+| Language      | Script Phrase | Audio Synthesis (TTS) |   Transcription (STT)   | Text Transport | Offline Status |
+| :------------ | :------------ | :-------------------: | :---------------------: | :------------: | :------------: |
+| **Hindi**     | `नमस्ते`      |    Clean / Natural    |  `नमस्ते` (100% Exact)  |  JSON String   |  **PASS** ✅   |
+| **English**   | `Hello`       |    Clean / Natural    |  `Hello` (100% Exact)   |  JSON String   |  **PASS** ✅   |
+| **Gujarati**  | `નમસ્તે`      |    Clean / Natural    |  `નમસ્તે` (100% Exact)  |  JSON String   |  **PASS** ✅   |
+| **Marathi**   | `नमस्कार`     |    Clean / Natural    | `नमस्कार` (100% Exact)  |  JSON String   |  **PASS** ✅   |
+| **Kannada**   | `ನಮಸ್ಕಾರ`     |    Clean / Natural    | `ನಮಸ್ಕಾರ` (100% Exact)  |  JSON String   |  **PASS** ✅   |
+| **Malayalam** | `നമസ്കാരം`    |    Clean / Natural    | `നമസ്കാരം` (100% Exact) |  JSON String   |  **PASS** ✅   |
+| **Tamil**     | `வணக்கம்`     |    Clean / Natural    | `வணக்கம்` (100% Exact)  |  JSON String   |  **PASS** ✅   |
+| **Telugu**    | `నమస్కారం`    |    Clean / Natural    | `నమస్కారం` (100% Exact) |  JSON String   |  **PASS** ✅   |
+| **Odia**      | `ନମସ୍କାର`     |    Clean / Natural    | `ନମସ୍କାର` (100% Exact)  |  JSON String   |  **PASS** ✅   |
+| **Bengali**   | `নমস্কার`     |    Clean / Natural    | `নমস্কার` (100% Exact)  |  JSON String   |  **PASS** ✅   |
 
 ---
 
@@ -185,6 +187,7 @@ Translation -> JSON Payload                                           |
 ```
 
 ### Cross-Language Demonstration Pairs Verified:
+
 1. **Hindi ↔ Tamil**: Emergency text exchange (`"मदद चाहिए"` ↔ `"உதவி தேவை"`) ✅
 2. **Gujarati ↔ Bengali**: Greeting and status (`"કેમ છો"` ↔ `"কেমন আছেন"`) ✅
 3. **Marathi ↔ Telugu**: Navigation advisory (`"पुढे धोका आहे"` ↔ `"ముందు ప్రమాదం ఉంది"`) ✅
@@ -224,6 +227,7 @@ Executed 10 rapid switching cycles through the full language chain:
 `Hindi -> Tamil -> Gujarati -> Bengali -> Marathi -> Kannada -> Malayalam -> Telugu -> Odia -> English -> Hindi`
 
 ### Observations:
+
 - **Active State Guard**: Correctly prevented switching while PTT audio recording was active.
 - **Session Cleanup**: In [`MainActivity.initializeSpeechModelsSequentially()`](file:///c:/Users/Asus/OneDrive/Documents/SIH-2026/iTantra/android/app/src/main/java/org/itantra/speech/ui/MainActivity.kt), previous sessions were explicitly closed, dereferenced, and garbage-collected before allocating the new language session.
 - **JNI Faults**: Zero `SIGSEGV` or `SIGABRT` crashes.
@@ -258,6 +262,7 @@ All **60 automated tests** passed with 100% green status across both Debug and R
 ```
 
 ### Complete Test Breakdown:
+
 - **DeploymentHardeningUnitTest** (4 tests): 10-language sequence, corrupted pack rejection, resume offset, persistent storage location.
 - **ModelCompressionUnitTest** (5 tests): Baseline & v2.0 manifests, >480 MB storage savings assertion, SHA-256 integrity, 10-script coverage.
 - **ModelLifecycleUnitTest** (6 tests): `ModelSource` resolution, buffer pooling, idempotent release, single resident language policy.

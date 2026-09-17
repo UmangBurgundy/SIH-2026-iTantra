@@ -50,6 +50,21 @@ class UtteranceSegmenter(
     var onUtteranceFinalized: ((Utterance) -> Unit)? = null
     var onVADDecision: ((DualGateVad.Decision) -> Unit)? = null
 
+    /**
+     * When true, elevates the consecutive speech-frame threshold required to trigger
+     * speech onset from [speechStartFrames] to [bargeInSpeechStartFrames].
+     * Used during Phone Call Mode when remote TTS is playing through the speaker
+     * to prevent acoustic feedback while still detecting intentional barge-in speech.
+     */
+    var bargeInMode: Boolean = false
+
+    /** Elevated frame count for barge-in mode (120 ms at 30 ms/frame) */
+    var bargeInSpeechStartFrames: Int = 4
+
+    /** Effective speech start threshold considering bargeInMode */
+    private val effectiveSpeechStartFrames: Int
+        get() = if (bargeInMode) bargeInSpeechStartFrames else speechStartFrames
+
     val isSpeechActive: Boolean get() = currentState == State.SPEECH_ACTIVE
 
     fun processFrame(pcmBytes: ByteArray, vadPcm: ByteArray? = null, precomputedRms: Double? = null) {
@@ -83,7 +98,7 @@ class UtteranceSegmenter(
 
                 if (speech) {
                     consecutiveSpeech++
-                    if (consecutiveSpeech >= speechStartFrames) {
+                    if (consecutiveSpeech >= effectiveSpeechStartFrames) {
                         // Confirmed speech onset (3 consecutive frames = 90 ms)
                         currentState = State.SPEECH_ACTIVE
                         consecutiveSilence = 0

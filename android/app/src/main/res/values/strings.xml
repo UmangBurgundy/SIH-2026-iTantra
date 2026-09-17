@@ -74,4 +74,17 @@
     <string name="pack_downloading_title">Downloading %1$s Pack…</string>
     <string name="pack_installed_toast">%1$s language pack installed and ready offline!</string>
     <string name="pack_insufficient_space">Insufficient storage to install %1$s pack. Available: %2$s, Required: %3$s.</string>
+    <!-- Phone Call Mode -->
+    <string name="ptt_mode_phone_call">📞 Phone Call</string>
+    <string name="call_hint">Phone-call-like conversation with barge-in support</string>
+    <string name="call_start">📞 START CALL</string>
+    <string name="call_stop">📵 END CALL</string>
+    <string name="call_turn_calling">📞 In Call</string>
+    <string name="call_turn_barging_in">⚡ Barge-in</string>
+    <string name="call_state_listening">🎙️ State: IN CALL — LISTENING (Speak anytime)</string>
+    <string name="call_state_playing">🔊 State: IN CALL — REMOTE SPEAKING (Speak to interrupt)</string>
+    <string name="call_state_interrupted">⚡ State: INTERRUPTED — Processing your interruption…</string>
+    <string name="call_state_processing">⏳ State: IN CALL — PROCESSING (Transcribing…)</string>
+    <string name="call_state_sending">📤 State: IN CALL — SENDING (Transmitting text…)</string>
+    <string name="call_state_settling">⏳ State: SETTLING (Resuming in 150ms…)</string>
 </resources>
