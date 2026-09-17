@@ -1,0 +1,34 @@
+[
+  {
+    "target": "नमस्ते",
+    "transcription": "नमस्ते",
+    "duration_s": 1.056,
+    "peak": 0.7573457360267639,
+    "rms": 0.115406334400177,
+    "audio_path": "model_optimization/validation/baseline_sample_0.wav"
+  },
+  {
+    "target": "भारत एक महान देश है",
+    "transcription": "भारत एक महान देश है",
+    "duration_s": 2.224,
+    "peak": 0.9192517995834351,
+    "rms": 0.16328464448451996,
+    "audio_path": "model_optimization/validation/baseline_sample_1.wav"
+  },
+  {
+    "target": "हम सब भारतीय हैं",
+    "transcription": "हम सब भारतीय हैं",
+    "duration_s": 1.84,
+    "peak": 0.9313209056854248,
+    "rms": 0.12176638096570969,
+    "audio_path": "model_optimization/validation/baseline_sample_2.wav"
+  },
+  {
+    "target": "आप कैसे हैं",
+    "transcription": "आप कैसे हैं",
+    "duration_s": 1.296,
+    "peak": 0.9119057655334473,
+    "rms": 0.14657559990882874,
+    "audio_path": "model_optimization/validation/baseline_sample_3.wav"
+  }
+]

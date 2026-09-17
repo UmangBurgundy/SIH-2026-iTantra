@@ -7,6 +7,7 @@ import org.itantra.speech.alert.AudioMessage
  */
 enum class ConnectionState {
     DISCONNECTED,
+    SEARCHING,
     HOSTING,
     CONNECTING,
     CONNECTED,

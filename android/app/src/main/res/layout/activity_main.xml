@@ -60,6 +60,18 @@
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
                 android:background="#1E293B" />
+
+            <Button
+                android:id="@+id/btnManagePacks"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:layout_marginStart="6dp"
+                android:text="@string/pack_btn_manage"
+                android:textColor="#38BDF8"
+                android:textSize="12sp"
+                android:backgroundTint="#0F172A"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
         </LinearLayout>
 
         <!-- Model Status Card -->
@@ -105,6 +117,201 @@
                     android:text="Microphone: Checking permissions..."
                     android:textColor="@color/text_secondary"
                     android:textSize="13sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Push-to-Talk Voice Communication Card (Phase 8.8) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardPtt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="3dp"
+            app:strokeColor="@color/ptt_card_border"
+            app:strokeWidth="1.5dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <!-- Header -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ptt_title"
+                    android:textColor="@color/accent"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <!-- Voice Input Mode Selector -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/ptt_mode_label"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <RadioGroup
+                        android:id="@+id/rgVoiceMode"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:orientation="horizontal">
+
+                        <RadioButton
+                            android:id="@+id/rbModePtt"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/ptt_mode_ptt"
+                            android:textColor="@color/text_primary"
+                            android:textSize="11sp"
+                            android:checked="true" />
+
+                        <RadioButton
+                            android:id="@+id/rbModeAuto"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/ptt_mode_auto"
+                            android:textColor="@color/text_primary"
+                            android:textSize="11sp" />
+
+                        <RadioButton
+                            android:id="@+id/rbModeContinuous"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/ptt_mode_continuous"
+                            android:textColor="@color/text_primary"
+                            android:textSize="11sp" />
+                    </RadioGroup>
+                </LinearLayout>
+
+                <!-- Status & Turn Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tvPttTransportStatus"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="#0F172A"
+                        android:padding="6dp"
+                        android:text="🌐 Wi-Fi: Disconnected"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvPttTurnIndicator"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:background="#0F172A"
+                        android:padding="6dp"
+                        android:text="@string/ptt_turn_offline"
+                        android:textColor="@color/accent"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- PTT State Banner -->
+                <TextView
+                    android:id="@+id/tvPttStateBanner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="#0F172A"
+                    android:padding="8dp"
+                    android:gravity="center"
+                    android:text="State: DISCONNECTED (Connect Wi-Fi or Bluetooth)"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <!-- Central Push-to-Talk Button -->
+                <Button
+                    android:id="@+id/btnPushToTalk"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:layout_marginTop="12dp"
+                    android:backgroundTint="@color/ptt_idle_bg"
+                    android:text="@string/ptt_hold_to_speak"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvPttHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
+                    android:text="@string/ptt_hint_hold"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp" />
+
+                <!-- Conversation Dialogue Log -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="💬 Conversation Dialogue:"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/btnPttClearLog"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:backgroundTint="#334155"
+                        android:paddingLeft="8dp"
+                        android:paddingRight="8dp"
+                        android:text="Clear"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvPttConversationLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="#0F172A"
+                    android:padding="8dp"
+                    android:minLines="3"
+                    android:maxLines="6"
+                    android:text="Dialogue is empty. Hold button to speak."
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:fontFamily="monospace" />
+
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -824,6 +1031,253 @@
                     android:background="#1E293B"
                     android:padding="8dp"
                     android:text="[Ready] Host or Join session to begin bidirectional text exchange."
+                    android:textColor="#94A3B8"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Transport Mode Selector (Phase 8.7) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#6D28D9"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📡 Active Transport Mode"
+                    android:textColor="@color/bluetooth_accent"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <RadioGroup
+                    android:id="@+id/rgTransportMode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal">
+
+                    <RadioButton
+                        android:id="@+id/rbWifi"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="🌐 Wi-Fi"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:checked="true" />
+
+                    <RadioButton
+                        android:id="@+id/rbBluetooth"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="📶 Bluetooth"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+                </RadioGroup>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Bluetooth Text Communication Card (Phase 8.7) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardBluetooth"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="2dp"
+            app:strokeColor="@color/bluetooth_accent"
+            app:strokeWidth="1.5dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <!-- Header with Status Indicator -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="📶 Bluetooth Transport (Phase 8.7)"
+                        android:textColor="@color/bluetooth_accent"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvBtConnectionStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🔴 Disconnected"
+                        android:textColor="#EF4444"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Connected Device Name -->
+                <TextView
+                    android:id="@+id/tvBtConnectedDevice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Device: Not connected"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+                <!-- Host / Discover / Disconnect Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <Button
+                        android:id="@+id/btnBtHost"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#7C3AED"
+                        android:text="Host Session"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnBtDiscover"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:backgroundTint="#059669"
+                        android:text="Discover"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnBtDisconnect"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="38dp"
+                        android:layout_marginStart="4dp"
+                        android:text="Stop"
+                        android:textColor="#EF4444"
+                        android:textSize="11sp"
+                        android:enabled="false" />
+                </LinearLayout>
+
+                <!-- Discovered Devices List Container -->
+                <LinearLayout
+                    android:id="@+id/layoutBtDeviceList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:background="#0F172A"
+                    android:padding="8dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tvBtDeviceListHeader"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Available Devices:"
+                        android:textColor="@color/bluetooth_accent"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <!-- Device buttons are added dynamically here -->
+                </LinearLayout>
+
+                <!-- Action Test Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnBtSendTest"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#3B82F6"
+                        android:text="💬 Send Test Text"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnBtSendAlert"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="6dp"
+                        android:backgroundTint="#DC2626"
+                        android:text="🚨 Send Alert"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- Bluetooth Telemetry -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:background="#0F172A"
+                    android:padding="8dp">
+
+                    <TextView
+                        android:id="@+id/tvBtMetricPayload"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Payload: 0 B (Text) vs 0 KB (PCM) → Dynamic Saving"
+                        android:textColor="#34D399"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvBtMetricLatency"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Sender: -- ms | RTT: -- ms | Receiver: -- ms"
+                        android:textColor="@color/bluetooth_accent"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- Bluetooth Chat Log -->
+                <TextView
+                    android:id="@+id/tvBtChatLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="#1E293B"
+                    android:padding="8dp"
+                    android:text="[Ready] Host or Discover devices to begin Bluetooth text exchange."
                     android:textColor="#94A3B8"
                     android:textSize="11sp" />
             </LinearLayout>

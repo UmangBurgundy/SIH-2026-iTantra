@@ -19,4 +19,59 @@
     <string name="metric_rtf">Real-Time Factor: —</string>
     <string name="metric_ram">Process RAM: — MB</string>
     <string name="metric_audio_duration">Audio Duration: — s</string>
+
+    <!-- Bluetooth Transport (Phase 8.7) -->
+    <string name="bt_status_disconnected">🔴 Disconnected</string>
+    <string name="bt_status_hosting">🟡 Hosting…</string>
+    <string name="bt_status_searching">🔍 Searching…</string>
+    <string name="bt_status_connecting">🟡 Connecting…</string>
+    <string name="bt_status_connected">🟢 Connected</string>
+    <string name="bt_status_error">❌ Error</string>
+    <string name="bt_no_adapter">Bluetooth is not available on this device</string>
+    <string name="bt_disabled">Bluetooth is disabled. Please enable it.</string>
+    <string name="bt_permission_denied">Bluetooth permission denied. Cannot proceed.</string>
+    <string name="bt_no_devices">No Bluetooth devices found nearby</string>
+    <string name="bt_discovery_started">Scanning for nearby Bluetooth devices…</string>
+    <string name="bt_not_connected">ब्लूटूथ ट्रांसपोर्ट कनेक्ट नहीं है</string>
+    <string name="bt_transport_mode_wifi">Wi-Fi</string>
+    <string name="bt_transport_mode_bluetooth">Bluetooth</string>
+
+    <!-- Push-to-Talk (Phase 8.8) -->
+    <string name="ptt_title">🎙️ Push-to-Talk Walkie-Talkie</string>
+    <string name="ptt_hold_to_speak">🎙️ HOLD TO SPEAK</string>
+    <string name="ptt_listening">🔴 LISTENING (Release to Send)</string>
+    <string name="ptt_processing">⏳ PROCESSING...</string>
+    <string name="ptt_sending">📤 SENDING...</string>
+    <string name="ptt_remote_playing">🔊 REMOTE SPEAKER</string>
+    <string name="ptt_disconnected">🔴 OFFLINE</string>
+    <string name="ptt_turn_your_turn">👤 Your Turn</string>
+    <string name="ptt_turn_speaking">🎙️ You Speaking</string>
+    <string name="ptt_turn_remote">🔊 Remote Speaker</string>
+    <string name="ptt_turn_offline">🔴 Disconnected</string>
+    <string name="ptt_mode_label">Voice Input Mode:</string>
+    <string name="ptt_mode_ptt">🎙️ Push-to-Talk</string>
+    <string name="ptt_mode_auto">🔄 Auto-Transmit</string>
+    <string name="ptt_hint_hold">Press and hold button to speak, release to send</string>
+    <string name="ptt_hint_auto">Continuous listening with auto-send on pause</string>
+    <string name="ptt_not_connected">ट्रांसपोर्ट कनेक्ट नहीं है। पहले Wi-Fi या Bluetooth कनेक्ट करें।</string>
+
+    <!-- Continuous Conversation (Phase 8.9) -->
+    <string name="ptt_mode_continuous">🔁 Continuous</string>
+    <string name="conv_title">🔁 Hands-Free Conversation</string>
+    <string name="conv_start">▶ START CONVERSATION</string>
+    <string name="conv_stop">⏹ STOP CONVERSATION</string>
+    <string name="conv_hint">Hands-free walkie-talkie: automatically cycles between listening, sending, and remote TTS</string>
+    <string name="conv_waiting_remote">⏳ Waiting for peer reply…</string>
+    <string name="conv_remote_speaking">🔊 Remote speaker active</string>
+    <string name="conv_turn_waiting">⏳ Peer Turn</string>
+
+    <!-- Language Packs (Phase 9.2) -->
+    <string name="pack_btn_manage">🌐 Packs</string>
+    <string name="pack_dialog_title">Download %1$s Language Pack</string>
+    <string name="pack_dialog_msg">Download on-device AI models for %1$s.\n\n• Required Space: %2$s\n• Available Storage: %3$s\n\nOnce installed, %1$s speech-to-text and voice playback will work 100%% offline permanently.</string>
+    <string name="pack_btn_download">⬇ Download &amp; Install</string>
+    <string name="pack_btn_cancel">Cancel</string>
+    <string name="pack_downloading_title">Downloading %1$s Pack…</string>
+    <string name="pack_installed_toast">%1$s language pack installed and ready offline!</string>
+    <string name="pack_insufficient_space">Insufficient storage to install %1$s pack. Available: %2$s, Required: %3$s.</string>
 </resources>

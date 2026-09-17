@@ -124,13 +124,13 @@ class UtteranceSegmenter(
                 val reachedMaxDuration = currentDurationMs >= maxUtteranceMs
 
                 if (reachedPause || reachedMaxDuration) {
-                    finalizeUtterance(currentDurationMs, consecutiveSilence)
+                    finalizeUtterance(consecutiveSilence)
                 }
             }
         }
     }
 
-    private fun finalizeUtterance(durationMs: Long, trailingSilenceCount: Int) {
+    private fun finalizeUtterance(trailingSilenceCount: Int, minAllowedMs: Long = minUtteranceMs) {
         val rawPcm = activeUtteranceBuffer.toByteArray()
         currentState = State.IDLE
         consecutiveSpeech = 0
@@ -149,10 +149,29 @@ class UtteranceSegmenter(
 
         val cleanDurationMs = (cleanPcm.size / 32).toLong()
 
-        if (cleanDurationMs >= minUtteranceMs && cleanPcm.isNotEmpty()) {
+        if (cleanDurationMs >= minAllowedMs && cleanPcm.isNotEmpty()) {
             val utterance = Utterance(pcmData = cleanPcm, durationMs = cleanDurationMs)
             onUtteranceFinalized?.invoke(utterance)
         }
+    }
+
+    /**
+     * Explicitly signals an utterance endpoint, used by Push-to-Talk on button release.
+     * Forces immediate finalization of any active speech buffer without waiting for
+     * silence timeout, preventing cutoff of final syllables.
+     *
+     * @param allowShortUtterance If true, allows slightly shorter utterances (200ms) like "हाँ" or "OK"
+     * @return true if an active utterance was finalized, false if no speech was in progress.
+     */
+    fun forceFinalize(allowShortUtterance: Boolean = true): Boolean {
+        if (currentState == State.SPEECH_ACTIVE) {
+            finalizeUtterance(
+                trailingSilenceCount = consecutiveSilence,
+                minAllowedMs = if (allowShortUtterance) 200L else minUtteranceMs
+            )
+            return true
+        }
+        return false
     }
 
     /**

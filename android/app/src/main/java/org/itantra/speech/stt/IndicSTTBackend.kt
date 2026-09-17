@@ -19,6 +19,7 @@ import org.itantra.speech.utils.AudioUtils
  * cloud APIs, Python, or LLMs.
  */
 class IndicSTTBackend(
+    val langCode: String = "hi",
     override val modelName: String = "IndicConformer CTC INT8 (AI4Bharat / Sherpa-ONNX)"
 ) : STTBackend {
 
@@ -37,11 +38,33 @@ class IndicSTTBackend(
 
     override fun initialize(context: Context, modelDir: String?): Boolean {
         val t0 = SystemClock.elapsedRealtime()
-        Log.i(TAG, "Initializing $modelName from Android assets...")
+        Log.i(TAG, "Initializing $modelName (lang=$langCode) [modelDir=$modelDir]...")
 
         try {
-            val modelPath = if (modelDir != null) "$modelDir/indic-hi.int8.onnx" else DEFAULT_HINDI_MODEL
-            val tokensPath = if (modelDir != null) "$modelDir/indic-tokens.txt" else DEFAULT_INDIC_TOKENS
+            val isFromAssets = (modelDir == null)
+            val modelPath: String
+            val tokensPath: String
+
+            if (modelDir != null) {
+                val dir = java.io.File(modelDir)
+                val sttSubdir = java.io.File(dir, "stt")
+                val targetDir = if (sttSubdir.exists()) sttSubdir else dir
+                val mFile = targetDir.listFiles { _, name -> name.endsWith(".onnx") }?.firstOrNull()
+                    ?: java.io.File(targetDir, "indic-$langCode.int8.onnx")
+                val tFile = targetDir.listFiles { _, name -> name.endsWith("tokens.txt") }?.firstOrNull()
+                    ?: java.io.File(targetDir, "indic-$langCode-tokens.txt")
+
+                if (!mFile.exists()) {
+                    Log.w(TAG, "STT model file not found in ${targetDir.absolutePath}")
+                    _isLoaded = false
+                    return false
+                }
+                modelPath = mFile.absolutePath
+                tokensPath = tFile.absolutePath
+            } else {
+                modelPath = DEFAULT_HINDI_MODEL
+                tokensPath = DEFAULT_INDIC_TOKENS
+            }
 
             val nemoConfig = OfflineNemoEncDecCtcModelConfig(
                 model = modelPath
@@ -60,7 +83,11 @@ class IndicSTTBackend(
                 decodingMethod = "greedy_search"
             )
 
-            recognizer = OfflineRecognizer(context.assets, config)
+            recognizer = if (isFromAssets) {
+                OfflineRecognizer(context.assets, config)
+            } else {
+                OfflineRecognizer(null, config)
+            }
             _loadDurationMs = SystemClock.elapsedRealtime() - t0
             _isLoaded = true
             Log.i(TAG, "$modelName initialized successfully in ${_loadDurationMs}ms")
@@ -71,6 +98,8 @@ class IndicSTTBackend(
             return false
         }
     }
+
+    private var sampleBuffer = FloatArray(16000 * 5) // 5 seconds initial capacity
 
     override fun transcribe(pcmAudio: ByteArray, language: String): STTResult {
         val rec = recognizer
@@ -97,11 +126,16 @@ class IndicSTTBackend(
             )
         }
 
-        val audioDurationSec = (pcmAudio.size / 2).toDouble() / 16000.0
+        val requiredFloats = pcmAudio.size / 2
+        if (sampleBuffer.size < requiredFloats) {
+            sampleBuffer = FloatArray(requiredFloats + 16000)
+        }
+
+        val audioDurationSec = requiredFloats.toDouble() / 16000.0
         val t0 = SystemClock.elapsedRealtime()
 
         try {
-            val samples = AudioUtils.pcm16ToFloatArray(pcmAudio)
+            val samples = AudioUtils.pcm16ToFloatArray(pcmAudio, sampleBuffer)
             val stream = rec.createStream()
             stream.acceptWaveform(samples, 16000)
             rec.decode(stream)

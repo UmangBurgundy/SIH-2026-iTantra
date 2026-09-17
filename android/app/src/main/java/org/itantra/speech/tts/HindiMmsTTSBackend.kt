@@ -62,35 +62,49 @@ class HindiMmsTTSBackend(
 
     override fun initialize(context: Context, modelDir: String?): Boolean {
         val t0 = SystemClock.elapsedRealtime()
-        Log.i(TAG, "Initializing $modelName from Android assets...")
+        Log.i(TAG, "Initializing $modelName via zero-copy ModelSource...")
 
         try {
-            val modelPath = if (modelDir != null) "$modelDir/mms-hin.int8.onnx" else DEFAULT_MODEL_ASSET
-            val vocabPath = if (modelDir != null) "$modelDir/mms-hin-vocab.json" else DEFAULT_VOCAB_ASSET
+            val defaultVocabAsset = DEFAULT_VOCAB_ASSET
+            val vocabSource = org.itantra.speech.model.ModelSource.resolve(
+                modelDir = modelDir,
+                subDir = "tts",
+                fileNamePrefix = "mms-hin",
+                extension = "vocab.json",
+                fallbackAssetPath = defaultVocabAsset
+            )
 
             // 1. Load Vocab & Normalizer
-            context.assets.open(vocabPath).use { stream ->
+            vocabSource.openStream(context).use { stream ->
                 normalizer = HindiTextNormalizer.fromInputStream(stream)
             }
             Log.i(TAG, "Loaded Hindi vocab with ${normalizer?.vocabSize} tokens")
 
-            // 2. Initialize ONNX Runtime Environment & Session
+            // 2. Initialize ONNX Runtime Environment & Session via direct filesystem path
             val env = OrtEnvironment.getEnvironment()
             val sessionOptions = OrtSession.SessionOptions().apply {
                 setIntraOpNumThreads(2)
                 setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
             }
 
-            // Read model bytes from assets
-            val modelBytes = context.assets.open(modelPath).use { it.readBytes() }
-            val session = env.createSession(modelBytes, sessionOptions)
+            val defaultModelAsset = DEFAULT_MODEL_ASSET
+            val modelSource = org.itantra.speech.model.ModelSource.resolve(
+                modelDir = modelDir,
+                subDir = "tts",
+                fileNamePrefix = "mms-hin",
+                extension = ".onnx",
+                fallbackAssetPath = defaultModelAsset
+            )
+
+            val resolvedModelPath = modelSource.getFilePathOrExtract(context, cacheSubdir = "tts_models")
+            val session = env.createSession(resolvedModelPath, sessionOptions)
 
             ortEnv = env
             ortSession = session
             _loadDurationMs = SystemClock.elapsedRealtime() - t0
             _isLoaded = true
 
-            Log.i(TAG, "$modelName initialized successfully in ${_loadDurationMs}ms (Model size: ${modelBytes.size / (1024 * 1024)} MB)")
+            Log.i(TAG, "$modelName initialized successfully in ${_loadDurationMs}ms (path: $resolvedModelPath)")
             return true
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to initialize $modelName: ${e.message}", e)

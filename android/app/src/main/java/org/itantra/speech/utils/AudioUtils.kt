@@ -44,10 +44,19 @@ object AudioUtils {
      * with automatic soft peak gain normalization to ensure optimal Whisper recognition
      * even when the user speaks quietly or at phone-to-mouth distance.
      */
-    fun pcm16ToFloatArray(pcmBytes: ByteArray, targetPeak: Float = 0.8f): FloatArray {
+    /**
+     * Converts 16-bit little-endian PCM bytes into float array [-1.0f, 1.0f],
+     * with automatic soft peak gain normalization.
+     * Overload supporting buffer reuse to eliminate per-turn garbage collection pressure.
+     */
+    fun pcm16ToFloatArray(
+        pcmBytes: ByteArray,
+        outBuffer: FloatArray? = null,
+        targetPeak: Float = 0.8f
+    ): FloatArray {
         val shortBuffer = ByteBuffer.wrap(pcmBytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
         val count = shortBuffer.remaining()
-        val floats = FloatArray(count)
+        val floats = if (outBuffer != null && outBuffer.size >= count) outBuffer else FloatArray(count)
         var maxPeak = 0.0f
 
         for (i in 0 until count) {
@@ -62,12 +71,16 @@ object AudioUtils {
         // Apply soft gain if audio signal is quiet (peak < 0.45)
         if (maxPeak in 0.01f..0.45f) {
             val gain = (targetPeak / maxPeak).coerceAtMost(6.0f) // Cap gain at 6x to avoid blowing up noise floor
-            for (i in floats.indices) {
+            for (i in 0 until count) {
                 floats[i] = (floats[i] * gain).coerceIn(-1.0f, 1.0f)
             }
         }
 
-        return floats
+        return if (floats === outBuffer && floats.size > count) {
+            floats.copyOf(count)
+        } else {
+            floats
+        }
     }
 
     /**

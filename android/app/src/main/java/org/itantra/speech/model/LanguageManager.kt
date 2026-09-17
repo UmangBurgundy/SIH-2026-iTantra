@@ -1,8 +1,11 @@
 package org.itantra.speech.model
 
+import android.content.Context
+import org.itantra.speech.pack.LanguagePackRepository
 import org.itantra.speech.stt.IndicSTTBackend
 import org.itantra.speech.stt.STTBackend
 import org.itantra.speech.stt.SherpaOnnxSTTBackend
+import org.itantra.speech.tts.*
 
 /**
  * Manages the 10 target languages for iTantra, maintaining an honest validation status
@@ -22,7 +25,9 @@ class LanguageManager {
         VALIDATED,             // Verified end-to-end on target language with measured WER/CER
         EXPERIMENTAL,          // Runs on target language, undergoing physical validation
         NOT_YET_VALIDATED,     // Pipeline model compatible, but not yet tested on device
-        MODEL_NOT_INSTALLED    // On-demand model file not downloaded to local storage
+        MODEL_NOT_INSTALLED,   // On-demand model file not downloaded to local storage
+        DOWNLOADING,           // Download currently in progress
+        INSTALLED              // Downloaded and verified in local persistent storage
     }
 
     data class LanguageInfo(
@@ -35,9 +40,11 @@ class LanguageManager {
         override fun toString(): String {
             val statusTag = when (status) {
                 LanguageStatus.VALIDATED -> "✓ (Validated)"
+                LanguageStatus.INSTALLED -> "✓ (Offline Ready)"
+                LanguageStatus.DOWNLOADING -> "⬇ (Downloading...)"
                 LanguageStatus.EXPERIMENTAL -> "⚡ (Testing)"
                 LanguageStatus.NOT_YET_VALIDATED -> "⏳ (Not Validated)"
-                LanguageStatus.MODEL_NOT_INSTALLED -> "⬇ (Not Installed)"
+                LanguageStatus.MODEL_NOT_INSTALLED -> "⬇ (Download)"
             }
             return "$englishName ($nativeName) $statusTag"
         }
@@ -74,6 +81,34 @@ class LanguageManager {
         }
     }
 
+    fun getLanguageStatus(code: String): LanguageStatus {
+        return supportedLanguages.firstOrNull { it.code.equals(code, ignoreCase = true) }?.status
+            ?: LanguageStatus.MODEL_NOT_INSTALLED
+    }
+
+    fun setLanguageStatus(code: String, status: LanguageStatus) {
+        val lang = supportedLanguages.firstOrNull { it.code.equals(code, ignoreCase = true) }
+        lang?.status = status
+    }
+
+    /**
+     * Refreshes installation statuses based on local persistent pack directory.
+     */
+    fun refreshStatuses(context: Context) {
+        for (lang in supportedLanguages) {
+            if (lang.code == "hi" || lang.code == "en") {
+                lang.status = LanguageStatus.VALIDATED
+            } else {
+                val isInstalled = LanguagePackRepository.isPackInstalled(context, lang.code)
+                if (isInstalled) {
+                    lang.status = LanguageStatus.INSTALLED
+                } else if (lang.status != LanguageStatus.DOWNLOADING) {
+                    lang.status = LanguageStatus.MODEL_NOT_INSTALLED
+                }
+            }
+        }
+    }
+
     /**
      * Factory function: Creates the required STT backend for the selected language.
      * Enforces that only ONE model is active in RAM at a time.
@@ -81,7 +116,7 @@ class LanguageManager {
     fun createBackendForLanguage(language: LanguageInfo): STTBackend {
         return when (language.recommendedEngine) {
             STTEngineType.WHISPER_TINY -> SherpaOnnxSTTBackend()
-            STTEngineType.INDIC_CONFORMER -> IndicSTTBackend()
+            STTEngineType.INDIC_CONFORMER -> IndicSTTBackend(langCode = language.code)
         }
     }
 
@@ -89,19 +124,19 @@ class LanguageManager {
      * Factory function: Creates the required TTS backend for the selected language.
      * Enforces modularity and on-demand model loading (Requirement 7 & 8).
      */
-    fun createTTSBackendForLanguage(language: LanguageInfo): org.itantra.speech.tts.TTSBackend {
+    fun createTTSBackendForLanguage(language: LanguageInfo): TTSBackend {
         return when (language.code) {
-            "hi" -> org.itantra.speech.tts.HindiMmsTTSBackend()
-            "gu" -> org.itantra.speech.tts.GujaratiMmsTTSBackend()
-            "mr" -> org.itantra.speech.tts.MarathiMmsTTSBackend()
-            "kn" -> org.itantra.speech.tts.KannadaMmsTTSBackend()
-            "ml" -> org.itantra.speech.tts.MalayalamMmsTTSBackend()
-            "ta" -> org.itantra.speech.tts.TamilMmsTTSBackend()
-            "te" -> org.itantra.speech.tts.TeluguMmsTTSBackend()
-            "or" -> org.itantra.speech.tts.OdiaMmsTTSBackend()
-            "bn" -> org.itantra.speech.tts.BengaliMmsTTSBackend()
-            "en" -> org.itantra.speech.tts.EnglishTTSBackend()
-            else -> org.itantra.speech.tts.HindiMmsTTSBackend()
+            "hi" -> HindiMmsTTSBackend()
+            "gu" -> GujaratiMmsTTSBackend()
+            "mr" -> MarathiMmsTTSBackend()
+            "kn" -> KannadaMmsTTSBackend()
+            "ml" -> MalayalamMmsTTSBackend()
+            "ta" -> TamilMmsTTSBackend()
+            "te" -> TeluguMmsTTSBackend()
+            "or" -> OdiaMmsTTSBackend()
+            "bn" -> BengaliMmsTTSBackend()
+            "en" -> EnglishTTSBackend()
+            else -> HindiMmsTTSBackend()
         }
     }
 }

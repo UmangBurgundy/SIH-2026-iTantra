@@ -9,4 +9,9 @@
     <color name="background">#0F172A</color>
     <color name="text_primary">#F8FAFC</color>
     <color name="text_secondary">#94A3B8</color>
+    <color name="bluetooth_accent">#8B5CF6</color>
+    <color name="ptt_listening_bg">#DC2626</color>
+    <color name="ptt_idle_bg">#0284C7</color>
+    <color name="ptt_playing_bg">#D97706</color>
+    <color name="ptt_card_border">#0EA5E9</color>
 </resources>

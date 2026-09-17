@@ -1,0 +1,100 @@
+{
+  "categories_compressed": {
+    "assets/models/": 215336134,
+    "assets/": 0,
+    "lib/arm64-v8a/": 25396824,
+    "classes.dex": 4302476,
+    "res/": 300547,
+    "resources.arsc": 1050856,
+    "other": 371976
+  },
+  "categories_uncompressed": {
+    "assets/models/": 283151487,
+    "assets/": 0,
+    "lib/arm64-v8a/": 25396824,
+    "classes.dex": 10387652,
+    "res/": 603837,
+    "resources.arsc": 1050856,
+    "other": 1065412
+  },
+  "files": [
+    {
+      "name": "assets/models/indic-hi.int8.onnx",
+      "compressed": 123761816,
+      "uncompressed": 141104901,
+      "ratio": 0.877090838963843
+    },
+    {
+      "name": "assets/models/tiny-decoder.int8.onnx",
+      "compressed": 55954443,
+      "uncompressed": 89855401,
+      "ratio": 0.6227165242966307
+    },
+    {
+      "name": "assets/models/tts/mms-hin.int8.onnx",
+      "compressed": 26444687,
+      "uncompressed": 38368171,
+      "ratio": 0.6892350172229997
+    },
+    {
+      "name": "lib/arm64-v8a/libonnxruntime.so",
+      "compressed": 16035920,
+      "uncompressed": 16035920,
+      "ratio": 1.0
+    },
+    {
+      "name": "assets/models/tiny-encoder.int8.onnx",
+      "compressed": 8731486,
+      "uncompressed": 12937772,
+      "ratio": 0.6748832797486306
+    },
+    {
+      "name": "lib/arm64-v8a/libsherpa-onnx-jni.so",
+      "compressed": 4282408,
+      "uncompressed": 4282408,
+      "ratio": 1.0
+    },
+    {
+      "name": "lib/arm64-v8a/libsherpa-onnx-c-api.so",
+      "compressed": 4209192,
+      "uncompressed": 4209192,
+      "ratio": 1.0
+    },
+    {
+      "name": "lib/arm64-v8a/libonnxruntime4j_jni.so",
+      "compressed": 760104,
+      "uncompressed": 760104,
+      "ratio": 1.0
+    },
+    {
+      "name": "assets/models/tiny-tokens.txt",
+      "compressed": 413505,
+      "uncompressed": 816730,
+      "ratio": 0.5062933894922435
+    },
+    {
+      "name": "lib/arm64-v8a/libvad_jni.so",
+      "compressed": 67336,
+      "uncompressed": 67336,
+      "ratio": 1.0
+    },
+    {
+      "name": "lib/arm64-v8a/libsherpa-onnx-cxx-api.so",
+      "compressed": 41864,
+      "uncompressed": 41864,
+      "ratio": 1.0
+    },
+    {
+      "name": "assets/models/indic-tokens.txt",
+      "compressed": 29839,
+      "uncompressed": 67605,
+      "ratio": 0.4413726795355373
+    },
+    {
+      "name": "assets/models/tts/mms-hin-vocab.json",
+      "compressed": 358,
+      "uncompressed": 907,
+      "ratio": 0.3947078280044101
+    }
+  ]
+}
