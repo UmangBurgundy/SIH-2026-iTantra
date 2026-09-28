@@ -49,20 +49,26 @@ class UtteranceSegmenter(
     var onSpeechStateChanged: ((Boolean) -> Unit)? = null
     var onUtteranceFinalized: ((Utterance) -> Unit)? = null
     var onVADDecision: ((DualGateVad.Decision) -> Unit)? = null
+    var onBargeInTriggered: (() -> Unit)? = null
 
     /**
      * When true, elevates the consecutive speech-frame threshold required to trigger
-     * speech onset from [speechStartFrames] to [bargeInSpeechStartFrames].
+     * speech onset from [speechStartFrames] to [bargeInSpeechStartFrames], and syncs
+     * the elevated threshold mode to the underlying [DualGateVad].
      * Used during Phone Call Mode when remote TTS is playing through the speaker
      * to prevent acoustic feedback while still detecting intentional barge-in speech.
      */
     var bargeInMode: Boolean = false
+        set(value) {
+            field = value
+            vad.bargeInMode = value
+        }
 
     /** Elevated frame count for barge-in mode (120 ms at 30 ms/frame) */
     var bargeInSpeechStartFrames: Int = 4
 
     /** Effective speech start threshold considering bargeInMode */
-    private val effectiveSpeechStartFrames: Int
+    val effectiveSpeechStartFrames: Int
         get() = if (bargeInMode) bargeInSpeechStartFrames else speechStartFrames
 
     val isSpeechActive: Boolean get() = currentState == State.SPEECH_ACTIVE
@@ -99,7 +105,8 @@ class UtteranceSegmenter(
                 if (speech) {
                     consecutiveSpeech++
                     if (consecutiveSpeech >= effectiveSpeechStartFrames) {
-                        // Confirmed speech onset (3 consecutive frames = 90 ms)
+                        val wasBargeIn = bargeInMode
+                        // Confirmed speech onset (3 consecutive frames = 90 ms, or 4 frames = 120 ms for barge-in)
                         currentState = State.SPEECH_ACTIVE
                         consecutiveSilence = 0
                         utteranceStartTimeMs = System.currentTimeMillis()
@@ -113,6 +120,9 @@ class UtteranceSegmenter(
                             }
                         }
 
+                        if (wasBargeIn) {
+                            onBargeInTriggered?.invoke()
+                        }
                         onSpeechStateChanged?.invoke(true)
                     }
                 } else {
@@ -196,6 +206,7 @@ class UtteranceSegmenter(
         currentState = State.IDLE
         consecutiveSpeech = 0
         consecutiveSilence = 0
+        bargeInMode = false
         preSpeechRingBuffer.clear()
         activeUtteranceBuffer.reset()
         vad.reset()

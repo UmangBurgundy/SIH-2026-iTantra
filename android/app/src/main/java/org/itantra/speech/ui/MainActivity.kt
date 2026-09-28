@@ -4,15 +4,21 @@ import org.itantra.speech.R
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
+import android.view.LayoutInflater
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.Chronometer
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
@@ -58,6 +64,7 @@ import org.itantra.speech.vad.UtteranceSegmenter
 import org.itantra.speech.interaction.PttStateMachine
 import org.itantra.speech.interaction.ContinuousConversationController
 import org.itantra.speech.interaction.PhoneCallController
+import org.itantra.speech.interaction.PhoneCallConfig
 import org.itantra.speech.pack.LanguagePackManifest
 import org.itantra.speech.pack.LanguagePackRepository
 import org.itantra.speech.pack.LanguagePackDownloader
@@ -86,7 +93,7 @@ class MainActivity : AppCompatActivity() {
     // UI elements
     private lateinit var spinnerLanguage: Spinner
     private lateinit var btnManagePacks: Button
-    private var languageSpinnerAdapter: ArrayAdapter<LanguageManager.LanguageInfo>? = null
+    private var languageSpinnerAdapter: LanguageSpinnerAdapter? = null
     private var previousLanguagePosition = 0
     private lateinit var tvEngineStatus: TextView
     private lateinit var tvModelStatus: TextView
@@ -198,6 +205,20 @@ class MainActivity : AppCompatActivity() {
 
     // Phone Call Components
     private lateinit var phoneCallController: PhoneCallController
+    private lateinit var layoutPttContainer: LinearLayout
+    private lateinit var layoutPhoneCallContainer: LinearLayout
+    private lateinit var tvCallConnectionStatus: TextView
+    private lateinit var tvCallStatusBadge: TextView
+    private lateinit var tvCallLanguageStatus: TextView
+    private lateinit var tvCallMicIndicator: TextView
+    private lateinit var tvCallRemoteSpeakerIndicator: TextView
+    private lateinit var tvCallProcessingStatus: TextView
+    private lateinit var btnCallAction: Button
+    private lateinit var tvCallHint: TextView
+    private lateinit var tvCallConversationLog: TextView
+    private lateinit var btnCallClearLog: Button
+    private var remoteLanguageCode: String? = null
+
     private lateinit var rbModePhoneCall: RadioButton
     private lateinit var rbModeContinuous: RadioButton
 
@@ -207,10 +228,32 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvPttTransportStatus: TextView
     private lateinit var tvPttTurnIndicator: TextView
     private lateinit var tvPttStateBanner: TextView
+    private lateinit var tvContinuousStateBanner: TextView
     private lateinit var btnPushToTalk: Button
     private lateinit var tvPttHint: TextView
     private lateinit var tvPttConversationLog: TextView
     private lateinit var btnPttClearLog: Button
+
+    // Modern UI Tabs & Widgets
+    private lateinit var bottomNavigation: com.google.android.material.bottomnavigation.BottomNavigationView
+    private lateinit var tabHomeView: View
+    private lateinit var tabHistoryView: View
+    private lateinit var tabSettingsView: View
+    private lateinit var layoutContinuousContainer: LinearLayout
+    private lateinit var btnContinuousAction: Button
+    private lateinit var chronometerCall: android.widget.Chronometer
+    private lateinit var waveformCall: AudioWaveformView
+    private lateinit var waveformContinuous: AudioWaveformView
+    private lateinit var btnCallSpeaker: ImageButton
+    private lateinit var btnCallMute: ImageButton
+    private lateinit var btnQuickSos: ImageButton
+    private lateinit var ivConnectionIcon: android.widget.ImageView
+    private lateinit var layoutWifiControls: LinearLayout
+    private lateinit var layoutBtControls: LinearLayout
+    private lateinit var layoutConnectionPill: View
+    private var isSpeakerphoneActive = true
+    private var isMicMuted = false
+    private var lastWaveformUpdateMs = 0L
 
     private var pipelineJob: Job? = null
     private var lastVadUiUpdateMs: Long = 0L
@@ -238,7 +281,7 @@ class MainActivity : AppCompatActivity() {
         activeTransport = wifiTransport
 
         conversationController = ContinuousConversationController(lifecycleScope, settlingDelayMs = 200L)
-        phoneCallController = PhoneCallController(lifecycleScope, settlingDelayMs = 150L)
+        phoneCallController = PhoneCallController(lifecycleScope, config = PhoneCallConfig(settlingDelayMs = 150L))
 
         initViews()
         setupLanguageSpinner()
@@ -284,6 +327,126 @@ class MainActivity : AppCompatActivity() {
         tvPttTransportStatus = findViewById(R.id.tvPttTransportStatus)
         tvPttTurnIndicator = findViewById(R.id.tvPttTurnIndicator)
         tvPttStateBanner = findViewById(R.id.tvPttStateBanner)
+        tvContinuousStateBanner = findViewById(R.id.tvContinuousStateBanner)
+        layoutPttContainer = findViewById(R.id.layoutPttContainer)
+        layoutContinuousContainer = findViewById(R.id.layoutContinuousContainer)
+        btnContinuousAction = findViewById(R.id.btnContinuousAction)
+        layoutPhoneCallContainer = findViewById(R.id.layoutPhoneCallContainer)
+        tvCallConnectionStatus = findViewById(R.id.tvCallConnectionStatus)
+        tvCallStatusBadge = findViewById(R.id.tvCallStatusBadge)
+        tvCallLanguageStatus = findViewById(R.id.tvCallLanguageStatus)
+        tvCallMicIndicator = findViewById(R.id.tvCallMicIndicator)
+        tvCallRemoteSpeakerIndicator = findViewById(R.id.tvCallRemoteSpeakerIndicator)
+        tvCallProcessingStatus = findViewById(R.id.tvCallProcessingStatus)
+        btnCallAction = findViewById(R.id.btnCallAction)
+        tvCallHint = findViewById(R.id.tvCallHint)
+        tvCallConversationLog = findViewById(R.id.tvCallConversationLog)
+        btnCallClearLog = findViewById(R.id.btnCallClearLog)
+
+        // Modern Navigation Tabs
+        bottomNavigation = findViewById(R.id.bottomNavigation)
+        tabHomeView = findViewById(R.id.tabHomeView)
+        tabHistoryView = findViewById(R.id.tabHistoryView)
+        tabSettingsView = findViewById(R.id.tabSettingsView)
+
+        bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    tabHomeView.visibility = View.VISIBLE
+                    tabHistoryView.visibility = View.GONE
+                    tabSettingsView.visibility = View.GONE
+                    true
+                }
+                R.id.nav_history -> {
+                    tabHomeView.visibility = View.GONE
+                    tabHistoryView.visibility = View.VISIBLE
+                    tabSettingsView.visibility = View.GONE
+                    true
+                }
+                R.id.nav_settings -> {
+                    tabHomeView.visibility = View.GONE
+                    tabHistoryView.visibility = View.GONE
+                    tabSettingsView.visibility = View.VISIBLE
+                    true
+                }
+                else -> false
+            }
+        }
+
+        // Top Header Actions
+        layoutConnectionPill = findViewById<View>(R.id.layoutConnectionPill)
+        ivConnectionIcon = findViewById(R.id.ivConnectionIcon)
+        layoutConnectionPill.setOnClickListener {
+            bottomNavigation.selectedItemId = R.id.nav_settings
+        }
+
+        btnQuickSos = findViewById<ImageButton>(R.id.btnQuickSos)
+        btnQuickSos.setOnClickListener {
+            Toast.makeText(this, "🚨 TACTICAL EMERGENCY BROADCAST TRANSMITTED", Toast.LENGTH_LONG).show()
+            priorityScheduler.enqueue(AudioMessage.fromPredefined(PredefinedAlert.EMERGENCY_NOTIFICATION))
+        }
+
+        // Call Audio Controls & Visualizer
+        chronometerCall = findViewById<Chronometer>(R.id.chronometerCall)
+        waveformCall = findViewById(R.id.waveformCall)
+        waveformContinuous = findViewById(R.id.waveformContinuous)
+        btnCallSpeaker = findViewById(R.id.btnCallSpeaker)
+        btnCallMute = findViewById(R.id.btnCallMute)
+
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        btnCallSpeaker.setOnClickListener {
+            isSpeakerphoneActive = !isSpeakerphoneActive
+            audioManager.setSpeakerphoneOn(isSpeakerphoneActive)
+            btnCallSpeaker.setColorFilter(if (isSpeakerphoneActive) getColor(R.color.primary) else getColor(R.color.text_secondary))
+            Toast.makeText(this, if (isSpeakerphoneActive) "Speakerphone ON" else "Earpiece ON", Toast.LENGTH_SHORT).show()
+        }
+
+        btnCallMute.setOnClickListener {
+            isMicMuted = !isMicMuted
+            audioManager.setMicrophoneMute(isMicMuted)
+            btnCallMute.setColorFilter(if (isMicMuted) getColor(R.color.accent_red) else getColor(R.color.text_secondary))
+            Toast.makeText(this, if (isMicMuted) "Microphone MUTED" else "Microphone UNMUTED", Toast.LENGTH_SHORT).show()
+        }
+
+        btnCallClearLog.setOnClickListener {
+            tvCallConversationLog.text = "Call dialogue cleared."
+        }
+
+        btnCallAction.setOnClickListener {
+            if (phoneCallController.isCallActive) {
+                phoneCallController.stopCall()
+                utteranceSegmenter.bargeInMode = false
+            } else {
+                if (!phoneCallController.isTransportConnected) {
+                    Toast.makeText(this, getString(R.string.ptt_not_connected), Toast.LENGTH_SHORT).show()
+                } else if (!checkPermissions()) {
+                    // Audio permission requested
+                } else {
+                    val started = phoneCallController.startCall()
+                    if (!started) {
+                        Toast.makeText(this, getString(R.string.ptt_not_connected), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        btnContinuousAction.setOnClickListener {
+            if (conversationController.isConversationActive) {
+                conversationController.stopConversation()
+            } else {
+                if (!checkPermissions()) {
+                    // Audio permission requested
+                } else {
+                    val started = conversationController.startConversation()
+                    if (started) {
+                        if (!conversationController.isTransportConnected) {
+                            Toast.makeText(this, "🎙️ Continuous mode active (Standalone Demo - speaks back your speech)", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+        }
+
         btnPushToTalk = findViewById(R.id.btnPushToTalk)
         tvPttHint = findViewById(R.id.tvPttHint)
         tvPttConversationLog = findViewById(R.id.tvPttConversationLog)
@@ -310,15 +473,25 @@ class MainActivity : AppCompatActivity() {
                 R.id.rbModePtt -> {
                     activeVoiceMode = VoiceInteractionMode.PUSH_TO_TALK
                     isPttModeActive = true
+                    layoutPhoneCallContainer.visibility = View.GONE
+                    layoutContinuousContainer.visibility = View.GONE
+                    layoutPttContainer.visibility = View.VISIBLE
                     btnToggleListening.visibility = View.GONE
                     btnPushToTalk.visibility = View.VISIBLE
                     tvPttHint.text = getString(R.string.ptt_hint_hold)
                     updatePttUi(pttStateMachine.state, pttStateMachine.turn)
+                    updateGlobalConnectionPill(
+                        if (isBluetoothModeActive) "🔵 Bluetooth" else "🌐 Wi-Fi",
+                        connected = activeTransport?.isConnected() == true
+                    )
                     Log.i(TAG, "Voice interaction mode: Push-to-Talk")
                 }
                 R.id.rbModeAuto -> {
                     activeVoiceMode = VoiceInteractionMode.AUTO_TRANSMIT
                     isPttModeActive = false
+                    layoutPhoneCallContainer.visibility = View.GONE
+                    layoutContinuousContainer.visibility = View.GONE
+                    layoutPttContainer.visibility = View.VISIBLE
                     btnToggleListening.visibility = View.VISIBLE
                     btnPushToTalk.visibility = View.GONE
                     tvPttHint.text = getString(R.string.ptt_hint_auto)
@@ -327,24 +500,36 @@ class MainActivity : AppCompatActivity() {
                 R.id.rbModeContinuous -> {
                     activeVoiceMode = VoiceInteractionMode.CONTINUOUS_CONVERSATION
                     isPttModeActive = false
+                    layoutPhoneCallContainer.visibility = View.GONE
+                    layoutPttContainer.visibility = View.GONE
+                    layoutContinuousContainer.visibility = View.VISIBLE
                     btnToggleListening.visibility = View.GONE
-                    btnPushToTalk.visibility = View.VISIBLE
                     tvPttHint.text = getString(R.string.conv_hint)
                     updateContinuousUi(conversationController.state, conversationController.turn)
+                    updateGlobalConnectionPill(
+                        if (isBluetoothModeActive) "🔵 Bluetooth" else "🌐 Wi-Fi",
+                        connected = activeTransport?.isConnected() == true
+                    )
                     Log.i(TAG, "Voice interaction mode: Continuous Conversation")
                 }
                 R.id.rbModePhoneCall -> {
                     activeVoiceMode = VoiceInteractionMode.PHONE_CALL
                     isPttModeActive = false
+                    layoutPttContainer.visibility = View.GONE
+                    layoutContinuousContainer.visibility = View.GONE
+                    layoutPhoneCallContainer.visibility = View.VISIBLE
                     btnToggleListening.visibility = View.GONE
-                    btnPushToTalk.visibility = View.VISIBLE
-                    tvPttHint.text = getString(R.string.call_hint)
+                    updateCallLanguageDisplay()
+                    updateGlobalConnectionPill(
+                        if (isBluetoothModeActive) "🔵 Bluetooth" else "🌐 Wi-Fi",
+                        connected = activeTransport?.isConnected() == true
+                    )
                     updatePhoneCallUi(phoneCallController.state, phoneCallController.turn)
                     Log.i(TAG, "Voice interaction mode: Phone Call")
                 }
             }
         }
-        // Initially PTT mode is primary
+        // Initially Phone Call mode is visible by default
         btnToggleListening.visibility = View.GONE
 
         // TTS UI bindings
@@ -532,14 +717,23 @@ class MainActivity : AppCompatActivity() {
         tvBtMetricLatency = findViewById(R.id.tvBtMetricLatency)
         tvBtChatLog = findViewById(R.id.tvBtChatLog)
 
+        layoutWifiControls = findViewById(R.id.layoutWifiControls)
+        layoutBtControls = findViewById(R.id.layoutBtControls)
+        layoutWifiControls.visibility = View.VISIBLE
+        layoutBtControls.visibility = View.GONE
+
         // Transport Mode Selector
         rgTransportMode.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
                 R.id.rbWifi -> {
                     isBluetoothModeActive = false
                     activeTransport = wifiTransport
+                    layoutWifiControls.visibility = View.VISIBLE
+                    layoutBtControls.visibility = View.GONE
                     val isConn = wifiTransport.isConnected()
+                    val peerIp: String? = null
                     updatePttTransportDisplay("🌐 Wi-Fi", isConn)
+                    updateGlobalConnectionPill("🌐 Wi-Fi", isConn, peerIp)
                     pttStateMachine.setTransportConnected(isConn)
                     conversationController.setTransportConnected(isConn)
                     phoneCallController.setTransportConnected(isConn)
@@ -548,10 +742,13 @@ class MainActivity : AppCompatActivity() {
                 R.id.rbBluetooth -> {
                     isBluetoothModeActive = true
                     activeTransport = bluetoothTransport
+                    layoutWifiControls.visibility = View.GONE
+                    layoutBtControls.visibility = View.VISIBLE
                     val isConn = bluetoothTransport.isConnected()
                     val dev = if (isConn) bluetoothTransport.connectedDeviceName else null
                     val label = if (dev != null) "📶 BT ($dev)" else "📶 Bluetooth"
                     updatePttTransportDisplay(label, isConn)
+                    updateGlobalConnectionPill(label, isConn, dev)
                     pttStateMachine.setTransportConnected(isConn)
                     conversationController.setTransportConnected(isConn)
                     phoneCallController.setTransportConnected(isConn)
@@ -623,13 +820,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupLanguageSpinner() {
         languageManager.refreshStatuses(applicationContext)
-        languageSpinnerAdapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_item,
-            languageManager.supportedLanguages
-        )
-        languageSpinnerAdapter?.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinnerLanguage.adapter = languageSpinnerAdapter
+        val adapter = LanguageSpinnerAdapter(this, languageManager.supportedLanguages)
+        languageSpinnerAdapter = adapter
+        spinnerLanguage.adapter = adapter
+
+        val initialPos = languageManager.supportedLanguages.indexOfFirst { it.code == languageManager.activeLanguage.code }.coerceAtLeast(0)
+        previousLanguagePosition = initialPos
+        spinnerLanguage.setSelection(initialPos)
 
         spinnerLanguage.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
@@ -651,12 +848,65 @@ class MainActivity : AppCompatActivity() {
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+
+        val btnSwapLanguage: View? = findViewById(R.id.btnSwapLanguage)
+        btnSwapLanguage?.setOnClickListener {
+            val targetCode = if (!remoteLanguageCode.isNullOrEmpty() && remoteLanguageCode != languageManager.activeLanguage.code) {
+                remoteLanguageCode
+            } else {
+                if (languageManager.activeLanguage.code == "hi") "en" else "hi"
+            }
+            val targetPos = languageManager.supportedLanguages.indexOfFirst { it.code == targetCode }
+            if (targetPos >= 0) {
+                spinnerLanguage.setSelection(targetPos)
+            }
+        }
+    }
+
+    private inner class LanguageSpinnerAdapter(
+        context: Context,
+        items: List<LanguageManager.LanguageInfo>
+    ) : ArrayAdapter<LanguageManager.LanguageInfo>(context, R.layout.spinner_language_item, items) {
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.spinner_language_item, parent, false)
+            val lang = getItem(position)
+            val tv = view.findViewById<TextView>(android.R.id.text1)
+            if (lang != null) {
+                tv.text = "${lang.englishName} (${lang.nativeName})"
+            }
+            return view
+        }
+
+        override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.spinner_language_dropdown_item, parent, false)
+            val lang = getItem(position)
+            val tvTitle = view.findViewById<TextView>(R.id.tvLangTitle)
+            val tvBadge = view.findViewById<TextView>(R.id.tvLangBadge)
+            if (lang != null) {
+                tvTitle.text = "${lang.englishName} (${lang.nativeName})"
+                val statusTag = when (lang.status) {
+                    LanguageManager.LanguageStatus.VALIDATED -> "✓ Ready"
+                    LanguageManager.LanguageStatus.INSTALLED -> "✓ Ready"
+                    LanguageManager.LanguageStatus.DOWNLOADING -> "⬇ Downloading..."
+                    LanguageManager.LanguageStatus.EXPERIMENTAL -> "⚡ Testing"
+                    LanguageManager.LanguageStatus.NOT_YET_VALIDATED -> "⏳ Setup needed"
+                    LanguageManager.LanguageStatus.MODEL_NOT_INSTALLED -> "⬇ Download"
+                }
+                tvBadge.text = statusTag
+                tvBadge.setTextColor(
+                    if (lang.status == LanguageManager.LanguageStatus.VALIDATED || lang.status == LanguageManager.LanguageStatus.INSTALLED) 0xFF16A34A.toInt()
+                    else 0xFF64748B.toInt()
+                )
+            }
+            return view
+        }
     }
 
     private fun applyLanguage(selectedLang: LanguageManager.LanguageInfo) {
-        // Prevent language switching during active speech capture or playback
-        if (audioRecorder.isActive || priorityScheduler.currentState != PlaybackState.IDLE || conversationController.isConversationActive) {
-            Toast.makeText(this, "Cannot change language while conversation or playback is active!", Toast.LENGTH_SHORT).show()
+        // Prevent language switching during active speech capture, playback, or call
+        if (audioRecorder.isActive || priorityScheduler.currentState != PlaybackState.IDLE || conversationController.isConversationActive || phoneCallController.isCallActive) {
+            Toast.makeText(this, "Cannot change language while conversation, playback, or call is active!", Toast.LENGTH_SHORT).show()
             val currentPos = languageManager.supportedLanguages.indexOfFirst { it.code == languageManager.activeLanguage.code }
             if (currentPos >= 0) {
                 spinnerLanguage.setSelection(currentPos)
@@ -665,6 +915,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         languageManager.setLanguage(selectedLang)
+        updateCallLanguageDisplay()
         Log.i(TAG, "Selected language changed to: ${selectedLang.englishName} (${selectedLang.code})")
 
         val engineName = if (selectedLang.recommendedEngine == LanguageManager.STTEngineType.WHISPER_TINY) {
@@ -779,7 +1030,7 @@ class MainActivity : AppCompatActivity() {
                 LanguageManager.LanguageStatus.DOWNLOADING -> "⬇ Downloading..."
                 else -> "⬇ Download (${pack.totalSizeBytes / (1024 * 1024)} MB)"
             }
-            "${pack.englishName} (${pack.languageCode}) - $statusStr" as CharSequence
+            "${pack.englishName} (${pack.languageCode}) - $statusStr"
         }.toTypedArray()
 
         AlertDialog.Builder(this)
@@ -1096,7 +1347,7 @@ class MainActivity : AppCompatActivity() {
 
             withContext(Dispatchers.Main) {
                 updateRamMetric(mem.totalPssMb)
-                if (result.isSuccess && result.pcmData != null) {
+                if (result.isSuccess) {
                     val pcm = result.pcmData
                     tvTtsMetricLatency.text = "Synth: ${result.latencyMs} ms"
                     tvTtsMetricRtf.text = "RTF: %.3f".format(result.rtf)
@@ -1154,6 +1405,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        utteranceSegmenter.onBargeInTriggered = {
+            runOnUiThread {
+                if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                    phoneCallController.onBargeInConfirmed()
+                }
+            }
+        }
+
         utteranceSegmenter.onSpeechStateChanged = { isSpeech ->
             runOnUiThread {
                 if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
@@ -1176,7 +1435,7 @@ class MainActivity : AppCompatActivity() {
         utteranceSegmenter.onUtteranceFinalized = { utterance ->
             Log.i(TAG, "Utterance finalized: ${utterance.durationMs}ms (${utterance.pcmData.size} bytes). Transcribing...")
             if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
-                phoneCallController.onUtteranceFinalized()
+                phoneCallController.onUtteranceFinalized(utterance.durationMs)
             } else if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
                 conversationController.onUtteranceFinalized()
             }
@@ -1218,8 +1477,7 @@ class MainActivity : AppCompatActivity() {
 
                             when (activeVoiceMode) {
                                 VoiceInteractionMode.PHONE_CALL -> {
-                                    Log.i(TAG, "Phone Call: STT complete: '${result.text}'. Transmitting...")
-                                    phoneCallController.onSttComplete(hasValidText = true)
+                                    phoneCallController.onSttComplete(hasValidText = true, text = result.text, latencyMs = result.latencyMs)
                                     sendPhoneCallMessage(result.text, result.audioDurationSec.toFloat())
                                 }
                                 VoiceInteractionMode.CONTINUOUS_CONVERSATION -> {
@@ -1294,6 +1552,18 @@ class MainActivity : AppCompatActivity() {
                     if (rawFrame != null) {
                         val processed = audioPreprocessor.process(rawFrame)
                         utteranceSegmenter.processFrame(rawFrame, vadPcm = processed.filteredPcm, precomputedRms = processed.rms)
+                        val now = SystemClock.uptimeMillis()
+                        if (now - lastWaveformUpdateMs > 40) {
+                            lastWaveformUpdateMs = now
+                            val rms = processed.rms
+                            runOnUiThread {
+                                if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                                    waveformCall.setRms(rms)
+                                } else if (activeVoiceMode == VoiceInteractionMode.CONTINUOUS_CONVERSATION) {
+                                    waveformContinuous.setRms(rms)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1341,12 +1611,8 @@ class MainActivity : AppCompatActivity() {
                         btnWifiJoin.isEnabled = true
                         btnWifiDisconnect.isEnabled = false
                         appendChatLog("[State] Disconnected")
-                        if (!isBluetoothModeActive) {
-                            updatePttTransportDisplay("🌐 Wi-Fi", connected = false)
-                            pttStateMachine.setTransportConnected(false)
-                            conversationController.setTransportConnected(false)
-                            phoneCallController.setTransportConnected(false)
-                        }
+                        updatePttTransportDisplay("🌐 Wi-Fi", connected = false)
+                        updatePhoneCallTransportDisplay("🌐 Wi-Fi", connected = false)
                     }
                     ConnectionState.HOSTING -> {
                         tvWifiConnectionStatus.text = "🟡 Hosting (Port ${WifiSocketTransport.DEFAULT_PORT})"
@@ -1355,12 +1621,8 @@ class MainActivity : AppCompatActivity() {
                         btnWifiJoin.isEnabled = false
                         btnWifiDisconnect.isEnabled = true
                         appendChatLog("[State] Hosting... Waiting for peer")
-                        if (!isBluetoothModeActive) {
-                            updatePttTransportDisplay("🌐 Wi-Fi (Hosting)", connected = false)
-                            pttStateMachine.setTransportConnected(false)
-                            conversationController.setTransportConnected(false)
-                            phoneCallController.setTransportConnected(false)
-                        }
+                        updatePttTransportDisplay("🌐 Wi-Fi (Hosting)", connected = false)
+                        updatePhoneCallTransportDisplay("🌐 Wi-Fi (Hosting)", connected = false)
                     }
                     ConnectionState.CONNECTING -> {
                         tvWifiConnectionStatus.text = "🟡 Connecting..."
@@ -1369,12 +1631,8 @@ class MainActivity : AppCompatActivity() {
                         btnWifiJoin.isEnabled = false
                         btnWifiDisconnect.isEnabled = true
                         appendChatLog("[State] Connecting to peer...")
-                        if (!isBluetoothModeActive) {
-                            updatePttTransportDisplay("🌐 Wi-Fi (Connecting)", connected = false)
-                            pttStateMachine.setTransportConnected(false)
-                            conversationController.setTransportConnected(false)
-                            phoneCallController.setTransportConnected(false)
-                        }
+                        updatePttTransportDisplay("🌐 Wi-Fi (Connecting)", connected = false)
+                        updatePhoneCallTransportDisplay("🌐 Wi-Fi (Connecting)", connected = false)
                     }
                     ConnectionState.CONNECTED -> {
                         tvWifiConnectionStatus.text = "🟢 Connected"
@@ -1383,12 +1641,8 @@ class MainActivity : AppCompatActivity() {
                         btnWifiJoin.isEnabled = false
                         btnWifiDisconnect.isEnabled = true
                         appendChatLog("[State] 🟢 Peer Connected! Socket session active.")
-                        if (!isBluetoothModeActive) {
-                            updatePttTransportDisplay("🌐 Wi-Fi", connected = true)
-                            pttStateMachine.setTransportConnected(true)
-                            conversationController.setTransportConnected(true)
-                            phoneCallController.setTransportConnected(true)
-                        }
+                        updatePttTransportDisplay("🌐 Wi-Fi", connected = true)
+                        updatePhoneCallTransportDisplay("🌐 Wi-Fi", connected = true)
 
                         // Perform initial ping-pong transport measurement
                         lifecycleScope.launch {
@@ -1403,12 +1657,8 @@ class MainActivity : AppCompatActivity() {
                         btnWifiJoin.isEnabled = true
                         btnWifiDisconnect.isEnabled = false
                         appendChatLog("[State] Error encountered")
-                        if (!isBluetoothModeActive) {
-                            updatePttTransportDisplay("🌐 Wi-Fi", connected = false)
-                            pttStateMachine.setTransportConnected(false)
-                            conversationController.setTransportConnected(false)
-                            phoneCallController.setTransportConnected(false)
-                        }
+                        updatePttTransportDisplay("🌐 Wi-Fi", connected = false)
+                        updatePhoneCallTransportDisplay("🌐 Wi-Fi", connected = false)
                     }
                     ConnectionState.SEARCHING -> {
                         // Not used by Wi-Fi transport — no-op
@@ -1422,8 +1672,15 @@ class MainActivity : AppCompatActivity() {
                 val t3 = recvTimeMs
                 val t4 = SystemClock.elapsedRealtime()
 
+                remoteLanguageCode = message.language
+                updateCallLanguageDisplay()
+
                 appendChatLog("📥 Received [${message.priority}]: ${message.text.take(40)}...")
                 appendConversationLog("Remote: ${message.text}")
+                if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                    appendCallConversationLog("Remote: ${message.text}")
+                    phoneCallController.onRemoteMessageReceived(message.text, message.language)
+                }
 
                 // Enqueue directly into PriorityAudioScheduler (Phase 8.5)
                 priorityScheduler.enqueue(message)
@@ -1573,12 +1830,8 @@ class MainActivity : AppCompatActivity() {
                         btnBtDiscover.isEnabled = true
                         btnBtDisconnect.isEnabled = false
                         appendBtChatLog("[State] Disconnected")
-                        if (isBluetoothModeActive) {
-                            updatePttTransportDisplay("📶 Bluetooth", connected = false)
-                            pttStateMachine.setTransportConnected(false)
-                            conversationController.setTransportConnected(false)
-                            phoneCallController.setTransportConnected(false)
-                        }
+                        updatePttTransportDisplay("📶 Bluetooth", connected = false)
+                        updatePhoneCallTransportDisplay("🔵 Bluetooth", connected = false)
                     }
                     ConnectionState.SEARCHING -> {
                         tvBtConnectionStatus.text = getString(R.string.bt_status_searching)
@@ -1587,12 +1840,8 @@ class MainActivity : AppCompatActivity() {
                         btnBtDiscover.isEnabled = false
                         btnBtDisconnect.isEnabled = true
                         appendBtChatLog("[State] Searching for devices...")
-                        if (isBluetoothModeActive) {
-                            updatePttTransportDisplay("📶 Bluetooth (Searching)", connected = false)
-                            pttStateMachine.setTransportConnected(false)
-                            conversationController.setTransportConnected(false)
-                            phoneCallController.setTransportConnected(false)
-                        }
+                        updatePttTransportDisplay("📶 Bluetooth (Searching)", connected = false)
+                        updatePhoneCallTransportDisplay("🔵 Bluetooth (Searching)", connected = false)
                     }
                     ConnectionState.HOSTING -> {
                         tvBtConnectionStatus.text = getString(R.string.bt_status_hosting)
@@ -1601,12 +1850,8 @@ class MainActivity : AppCompatActivity() {
                         btnBtDiscover.isEnabled = false
                         btnBtDisconnect.isEnabled = true
                         appendBtChatLog("[State] Hosting RFCOMM... Waiting for peer")
-                        if (isBluetoothModeActive) {
-                            updatePttTransportDisplay("📶 Bluetooth (Hosting)", connected = false)
-                            pttStateMachine.setTransportConnected(false)
-                            conversationController.setTransportConnected(false)
-                            phoneCallController.setTransportConnected(false)
-                        }
+                        updatePttTransportDisplay("📶 Bluetooth (Hosting)", connected = false)
+                        updatePhoneCallTransportDisplay("🔵 Bluetooth (Hosting)", connected = false)
                     }
                     ConnectionState.CONNECTING -> {
                         tvBtConnectionStatus.text = getString(R.string.bt_status_connecting)
@@ -1615,12 +1860,8 @@ class MainActivity : AppCompatActivity() {
                         btnBtDiscover.isEnabled = false
                         btnBtDisconnect.isEnabled = true
                         appendBtChatLog("[State] Connecting to peer...")
-                        if (isBluetoothModeActive) {
-                            updatePttTransportDisplay("📶 Bluetooth (Connecting)", connected = false)
-                            pttStateMachine.setTransportConnected(false)
-                            conversationController.setTransportConnected(false)
-                            phoneCallController.setTransportConnected(false)
-                        }
+                        updatePttTransportDisplay("📶 Bluetooth (Connecting)", connected = false)
+                        updatePhoneCallTransportDisplay("🔵 Bluetooth (Connecting)", connected = false)
                     }
                     ConnectionState.CONNECTED -> {
                         tvBtConnectionStatus.text = getString(R.string.bt_status_connected)
@@ -1632,12 +1873,8 @@ class MainActivity : AppCompatActivity() {
                         btnBtDisconnect.isEnabled = true
                         layoutBtDeviceList.visibility = View.GONE
                         appendBtChatLog("[State] 🟢 Bluetooth Connected to $deviceName!")
-                        if (isBluetoothModeActive) {
-                            updatePttTransportDisplay("📶 BT ($deviceName)", connected = true)
-                            pttStateMachine.setTransportConnected(true)
-                            conversationController.setTransportConnected(true)
-                            phoneCallController.setTransportConnected(true)
-                        }
+                        updatePttTransportDisplay("📶 BT ($deviceName)", connected = true)
+                        updatePhoneCallTransportDisplay("🔵 BT ($deviceName)", connected = true, peerInfo = deviceName)
 
                         // Perform initial ping-pong transport measurement
                         lifecycleScope.launch {
@@ -1652,12 +1889,8 @@ class MainActivity : AppCompatActivity() {
                         btnBtDiscover.isEnabled = true
                         btnBtDisconnect.isEnabled = false
                         appendBtChatLog("[State] Bluetooth error")
-                        if (isBluetoothModeActive) {
-                            updatePttTransportDisplay("📶 Bluetooth", connected = false)
-                            pttStateMachine.setTransportConnected(false)
-                            conversationController.setTransportConnected(false)
-                            phoneCallController.setTransportConnected(false)
-                        }
+                        updatePttTransportDisplay("📶 Bluetooth", connected = false)
+                        updatePhoneCallTransportDisplay("🔵 Bluetooth", connected = false)
                     }
                 }
             }
@@ -1668,8 +1901,15 @@ class MainActivity : AppCompatActivity() {
                 val t3 = recvTimeMs
                 val t4 = SystemClock.elapsedRealtime()
 
+                remoteLanguageCode = message.language
+                updateCallLanguageDisplay()
+
                 appendBtChatLog("📥 BT Received [${message.priority}]: ${message.text.take(40)}...")
                 appendConversationLog("Remote: ${message.text}")
+                if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                    appendCallConversationLog("Remote: ${message.text}")
+                    phoneCallController.onRemoteMessageReceived(message.text, message.language)
+                }
 
                 // Enqueue into PriorityAudioScheduler for TTS playback
                 priorityScheduler.enqueue(message)
@@ -1787,64 +2027,72 @@ class MainActivity : AppCompatActivity() {
                 tvPttTurnIndicator.setTextColor(0xFFF59E0B.toInt())
             }
             PttStateMachine.ConversationTurn.OFFLINE -> {
-                tvPttTurnIndicator.text = getString(R.string.ptt_turn_offline)
-                tvPttTurnIndicator.setTextColor(0xFFEF4444.toInt())
+                tvPttTurnIndicator.text = "Push-to-Talk (Offline)"
+                tvPttTurnIndicator.setTextColor(0xFF64748B.toInt())
             }
             PttStateMachine.ConversationTurn.ERROR -> {
-                tvPttTurnIndicator.text = "❌ Error"
-                tvPttTurnIndicator.setTextColor(0xFFEF4444.toInt())
+                tvPttTurnIndicator.text = "Push-to-Talk (Error)"
+                tvPttTurnIndicator.setTextColor(0xFFDC2626.toInt())
             }
         }
 
         // State Banner & PTT Button
+        btnPushToTalk.backgroundTintList = null
         when (state) {
             PttStateMachine.State.DISCONNECTED -> {
-                tvPttStateBanner.text = "State: DISCONNECTED (Connect Wi-Fi or Bluetooth)"
-                tvPttStateBanner.setBackgroundColor(0xFF1E293B.toInt())
-                btnPushToTalk.text = getString(R.string.ptt_hold_to_speak)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF475569.toInt())
+                tvPttStateBanner.text = "Offline (Connect to peer)"
+                tvPttStateBanner.setTextColor(0xFF64748B.toInt())
+                tvPttStateBanner.setBackgroundResource(R.drawable.bg_pill_status_disconnected)
+                btnPushToTalk.text = "🎙️\nHOLD TO SPEAK"
+                btnPushToTalk.setBackgroundResource(R.drawable.bg_circle_ptt_disconnected)
                 btnPushToTalk.isEnabled = true
             }
             PttStateMachine.State.IDLE -> {
-                tvPttStateBanner.text = "State: IDLE (Ready to speak)"
-                tvPttStateBanner.setBackgroundColor(0xFF1E293B.toInt())
-                btnPushToTalk.text = getString(R.string.ptt_hold_to_speak)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.ptt_idle_bg))
+                tvPttStateBanner.text = "Ready (Hold to speak)"
+                tvPttStateBanner.setTextColor(0xFF15803D.toInt())
+                tvPttStateBanner.setBackgroundResource(R.drawable.bg_pill_status_idle)
+                btnPushToTalk.text = "🎙️\nHOLD TO SPEAK"
+                btnPushToTalk.setBackgroundResource(R.drawable.bg_circle_ptt_idle)
                 btnPushToTalk.isEnabled = true
             }
             PttStateMachine.State.LISTENING -> {
-                tvPttStateBanner.text = "🔴 State: LISTENING (Release to send)"
-                tvPttStateBanner.setBackgroundColor(0xFF991B1B.toInt())
-                btnPushToTalk.text = getString(R.string.ptt_listening)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.ptt_listening_bg))
+                tvPttStateBanner.text = "🔴 Listening... (Release to send)"
+                tvPttStateBanner.setTextColor(0xFFB91C1C.toInt())
+                tvPttStateBanner.setBackgroundResource(R.drawable.bg_pill_status_active)
+                btnPushToTalk.text = "🔴\nLISTENING..."
+                btnPushToTalk.setBackgroundResource(R.drawable.bg_circle_ptt_speaking)
                 btnPushToTalk.isEnabled = true
             }
             PttStateMachine.State.PROCESSING -> {
-                tvPttStateBanner.text = "⏳ State: PROCESSING (Transcribing speech...)"
-                tvPttStateBanner.setBackgroundColor(0xFF312E81.toInt())
-                btnPushToTalk.text = getString(R.string.ptt_processing)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF4338CA.toInt())
+                tvPttStateBanner.text = "⏳ Transcribing speech..."
+                tvPttStateBanner.setTextColor(0xFF1D4ED8.toInt())
+                tvPttStateBanner.setBackgroundResource(R.drawable.bg_pill_status_processing)
+                btnPushToTalk.text = "⏳\nPROCESSING"
+                btnPushToTalk.setBackgroundResource(R.drawable.bg_circle_ptt_processing)
                 btnPushToTalk.isEnabled = false
             }
             PttStateMachine.State.SENDING -> {
-                tvPttStateBanner.text = "📤 State: SENDING (Transmitting text to peer...)"
-                tvPttStateBanner.setBackgroundColor(0xFF065F46.toInt())
-                btnPushToTalk.text = getString(R.string.ptt_sending)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF047857.toInt())
+                tvPttStateBanner.text = "📤 Transmitting to peer..."
+                tvPttStateBanner.setTextColor(0xFF047857.toInt())
+                tvPttStateBanner.setBackgroundResource(R.drawable.bg_pill_status_idle)
+                btnPushToTalk.text = "📤\nSENDING"
+                btnPushToTalk.setBackgroundResource(R.drawable.bg_circle_ptt_processing)
                 btnPushToTalk.isEnabled = false
             }
             PttStateMachine.State.PLAYING -> {
-                tvPttStateBanner.text = "🔊 State: PLAYING (Remote speaker active - mic locked)"
-                tvPttStateBanner.setBackgroundColor(0xFF78350F.toInt())
-                btnPushToTalk.text = getString(R.string.ptt_remote_playing)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.ptt_playing_bg))
+                tvPttStateBanner.text = "🔊 Remote peer speaking"
+                tvPttStateBanner.setTextColor(0xFFB45309.toInt())
+                tvPttStateBanner.setBackgroundResource(R.drawable.bg_pill_status_amber)
+                btnPushToTalk.text = "🔊\nPLAYING"
+                btnPushToTalk.setBackgroundResource(R.drawable.bg_circle_ptt_remote)
                 btnPushToTalk.isEnabled = false
             }
             PttStateMachine.State.ERROR -> {
-                tvPttStateBanner.text = "❌ State: ERROR"
-                tvPttStateBanner.setBackgroundColor(0xFF7F1D1D.toInt())
-                btnPushToTalk.text = getString(R.string.ptt_hold_to_speak)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF475569.toInt())
+                tvPttStateBanner.text = "❌ Error encountered"
+                tvPttStateBanner.setTextColor(0xFFDC2626.toInt())
+                tvPttStateBanner.setBackgroundResource(R.drawable.bg_pill_status_active)
+                btnPushToTalk.text = "🎙️\nHOLD TO SPEAK"
+                btnPushToTalk.setBackgroundResource(R.drawable.bg_circle_ptt_disconnected)
                 btnPushToTalk.isEnabled = true
             }
         }
@@ -1947,8 +2195,10 @@ class MainActivity : AppCompatActivity() {
                                 }
                             } else {
                                 Log.i(TAG, "PTT: Speech finalized. Handing off to STT...")
-                                if (isPttModeActive && audioRecorder.isActive) {
-                                    stopListening()
+                                withContext(Dispatchers.Main) {
+                                    if (isPttModeActive && audioRecorder.isActive) {
+                                        stopListening()
+                                    }
                                 }
                             }
                         }
@@ -2025,6 +2275,7 @@ class MainActivity : AppCompatActivity() {
             tvPttTransportStatus.text = "$transportName: 🔴 Disconnected"
             tvPttTransportStatus.setTextColor(0xFFEF4444.toInt())
         }
+        updateGlobalConnectionPill(transportName, connected)
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -2101,78 +2352,48 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // State Banner & Action Button
+        // Update Continuous State Banner
         when (state) {
             ContinuousConversationController.State.DISCONNECTED -> {
-                tvPttStateBanner.text = "State: DISCONNECTED (Connect Wi-Fi or Bluetooth)"
-                tvPttStateBanner.setBackgroundColor(0xFF1E293B.toInt())
-                btnPushToTalk.text = getString(R.string.conv_start)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF475569.toInt())
-                btnPushToTalk.isEnabled = true
+                tvContinuousStateBanner.text = if (conversationController.isConversationActive) "🎙️ Listening... (Standalone Demo)" else "Tap Start to begin conversation"
             }
             ContinuousConversationController.State.IDLE -> {
-                tvPttStateBanner.text = "State: IDLE (Tap to start hands-free conversation)"
-                tvPttStateBanner.setBackgroundColor(0xFF1E293B.toInt())
-                btnPushToTalk.text = getString(R.string.conv_start)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF0284C7.toInt())
-                btnPushToTalk.isEnabled = true
+                tvContinuousStateBanner.text = "Tap Start to begin conversation"
             }
             ContinuousConversationController.State.LISTENING -> {
-                tvPttStateBanner.text = "🎙️ State: LISTENING (Speak naturally, auto-detects pauses)"
-                tvPttStateBanner.setBackgroundColor(0xFF047857.toInt())
-                btnPushToTalk.text = getString(R.string.conv_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+                tvContinuousStateBanner.text = "🎙️ Listening... (Speak naturally)"
             }
             ContinuousConversationController.State.SPEECH_DETECTED -> {
-                tvPttStateBanner.text = "🔴 State: SPEECH DETECTED (Capturing utterance...)"
-                tvPttStateBanner.setBackgroundColor(0xFF991B1B.toInt())
-                btnPushToTalk.text = getString(R.string.conv_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+                tvContinuousStateBanner.text = "🔴 Speech detected"
             }
             ContinuousConversationController.State.PROCESSING_STT -> {
-                tvPttStateBanner.text = "⏳ State: PROCESSING (Transcribing speech on-device...)"
-                tvPttStateBanner.setBackgroundColor(0xFF312E81.toInt())
-                btnPushToTalk.text = getString(R.string.conv_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+                tvContinuousStateBanner.text = "⏳ Transcribing speech..."
             }
             ContinuousConversationController.State.SENDING -> {
-                tvPttStateBanner.text = "📤 State: SENDING (Transmitting text to peer...)"
-                tvPttStateBanner.setBackgroundColor(0xFF065F46.toInt())
-                btnPushToTalk.text = getString(R.string.conv_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+                tvContinuousStateBanner.text = "📤 Transmitting transcript..."
             }
             ContinuousConversationController.State.WAITING_REMOTE -> {
-                tvPttStateBanner.text = "⏳ State: WAITING FOR PEER (Listening ready)"
-                tvPttStateBanner.setBackgroundColor(0xFF1E293B.toInt())
-                btnPushToTalk.text = getString(R.string.conv_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+                tvContinuousStateBanner.text = "⏳ Waiting for response..."
             }
             ContinuousConversationController.State.PLAYING_TTS -> {
-                tvPttStateBanner.text = "🔊 State: PLAYING (Remote speaker active - mic locked)"
-                tvPttStateBanner.setBackgroundColor(0xFF78350F.toInt())
-                btnPushToTalk.text = getString(R.string.conv_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.ptt_playing_bg))
-                btnPushToTalk.isEnabled = true
+                tvContinuousStateBanner.text = "🔊 Speaking..."
             }
             ContinuousConversationController.State.RETURNING_TO_LISTEN -> {
-                tvPttStateBanner.text = "⏳ State: SETTLING (Resuming listening in 200ms...)"
-                tvPttStateBanner.setBackgroundColor(0xFF334155.toInt())
-                btnPushToTalk.text = getString(R.string.conv_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+                tvContinuousStateBanner.text = "⏳ Resuming listening in 200ms..."
             }
             ContinuousConversationController.State.ERROR -> {
-                tvPttStateBanner.text = "❌ State: ERROR"
-                tvPttStateBanner.setBackgroundColor(0xFF7F1D1D.toInt())
-                btnPushToTalk.text = getString(R.string.conv_start)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF475569.toInt())
-                btnPushToTalk.isEnabled = true
+                tvContinuousStateBanner.text = "❌ Interaction error"
             }
+        }
+
+        // Update action button text/style
+        btnContinuousAction.backgroundTintList = null
+        if (conversationController.isConversationActive) {
+            btnContinuousAction.text = "⏹️ Stop Conversation"
+            btnContinuousAction.setBackgroundResource(R.drawable.bg_pill_button_red)
+        } else {
+            btnContinuousAction.text = "🎙️ Start Conversation"
+            btnContinuousAction.setBackgroundResource(R.drawable.bg_pill_button_green)
         }
     }
 
@@ -2182,9 +2403,12 @@ class MainActivity : AppCompatActivity() {
         val message = AudioMessage.createNormal(text, langCode)
 
         if (transport == null || !transport.isConnected()) {
-            Log.w(TAG, "Conversation: Send failed - transport unavailable")
-            appendConversationLog("⚠ [Not Sent] You: $text (Transport disconnected)")
-            conversationController.onSttComplete(hasValidText = false)
+            Log.i(TAG, "Conversation: Standalone loopback mode - echoing via local TTS")
+            runOnUiThread {
+                appendConversationLog("You: $text")
+                conversationController.onMessageSent()
+                priorityScheduler.enqueue(message)
+            }
             return
         }
 
@@ -2236,7 +2460,7 @@ class MainActivity : AppCompatActivity() {
 
         phoneCallController.onRequestResumeListening = {
             runOnUiThread {
-                if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL) {
+                if (activeVoiceMode == VoiceInteractionMode.PHONE_CALL && phoneCallController.isCallActive) {
                     if (!audioRecorder.isActive) {
                         startListening()
                     }
@@ -2262,120 +2486,189 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updatePhoneCallUi(
-        state: PhoneCallController.State,
-        turn: PhoneCallController.Turn
-    ) {
-        if (activeVoiceMode != VoiceInteractionMode.PHONE_CALL) return
+    private fun updateCallLanguageDisplay() {
+        val remoteDisplay = if (!remoteLanguageCode.isNullOrEmpty()) {
+            val name = languageManager.supportedLanguages.find { it.code == remoteLanguageCode }?.englishName
+                ?: remoteLanguageCode?.uppercase() ?: "--"
+            "🗣️ $name (${remoteLanguageCode?.uppercase()})"
+        } else {
+            "Waiting for peer..."
+        }
+        tvCallLanguageStatus.text = remoteDisplay
+    }
 
-        // Turn Indicator Pill
-        when (turn) {
-            PhoneCallController.Turn.YOUR_TURN -> {
-                tvPttTurnIndicator.text = getString(R.string.call_turn_calling)
-                tvPttTurnIndicator.setTextColor(getColor(R.color.phone_call_accent))
+    private fun updatePhoneCallTransportDisplay(transportName: String, connected: Boolean, peerInfo: String? = null) {
+        updateGlobalConnectionPill(transportName, connected, peerInfo)
+    }
+
+    private fun updateGlobalConnectionPill(transportName: String? = null, connected: Boolean? = null, peerInfo: String? = null) {
+        val isWifiConn = wifiTransport.isConnected()
+        val isBtConn = bluetoothTransport.isConnected()
+        val isWifiHosting = wifiTransport.state == ConnectionState.HOSTING
+        val isBtHosting = bluetoothTransport.state == ConnectionState.HOSTING
+        val isWifiConnecting = wifiTransport.state == ConnectionState.CONNECTING
+        val isBtConnecting = bluetoothTransport.state == ConnectionState.CONNECTING || bluetoothTransport.state == ConnectionState.SEARCHING
+
+        val isAnyConnected = isWifiConn || isBtConn || (connected == true)
+
+        when {
+            isAnyConnected -> {
+                val isBt = isBtConn || (transportName?.contains("BT") == true || transportName?.contains("Bluetooth") == true)
+                val dev = peerInfo ?: if (isBt) bluetoothTransport.connectedDeviceName else null
+                val label = if (!dev.isNullOrEmpty()) "Connected ($dev)" else "Connected"
+                tvCallConnectionStatus.text = label
+                tvCallConnectionStatus.setTextColor(0xFF16A34A.toInt())
+                layoutConnectionPill.setBackgroundResource(R.drawable.bg_status_connected)
+                ivConnectionIcon.setImageResource(if (isBt) R.drawable.ic_bluetooth else R.drawable.ic_wifi)
+                ivConnectionIcon.setColorFilter(0xFF16A34A.toInt())
             }
-            PhoneCallController.Turn.YOU_SPEAKING -> {
-                tvPttTurnIndicator.text = getString(R.string.ptt_turn_speaking)
-                tvPttTurnIndicator.setTextColor(getColor(R.color.accent_red))
+            isWifiHosting -> {
+                tvCallConnectionStatus.text = "Hosting (Port 8888)"
+                tvCallConnectionStatus.setTextColor(0xFFD97706.toInt())
+                layoutConnectionPill.setBackgroundResource(R.drawable.bg_pill_status_amber)
+                ivConnectionIcon.setImageResource(R.drawable.ic_wifi)
+                ivConnectionIcon.setColorFilter(0xFFD97706.toInt())
             }
-            PhoneCallController.Turn.PROCESSING -> {
-                tvPttTurnIndicator.text = "⏳ Processing"
-                tvPttTurnIndicator.setTextColor(getColor(R.color.accent))
+            isBtHosting -> {
+                tvCallConnectionStatus.text = "Discoverable"
+                tvCallConnectionStatus.setTextColor(0xFFD97706.toInt())
+                layoutConnectionPill.setBackgroundResource(R.drawable.bg_pill_status_amber)
+                ivConnectionIcon.setImageResource(R.drawable.ic_bluetooth)
+                ivConnectionIcon.setColorFilter(0xFFD97706.toInt())
             }
-            PhoneCallController.Turn.SENDING -> {
-                tvPttTurnIndicator.text = "📤 Sending"
-                tvPttTurnIndicator.setTextColor(getColor(R.color.accent))
+            isWifiConnecting || isBtConnecting -> {
+                tvCallConnectionStatus.text = "Connecting..."
+                tvCallConnectionStatus.setTextColor(0xFF2563EB.toInt())
+                layoutConnectionPill.setBackgroundResource(R.drawable.bg_pill_status_processing)
+                ivConnectionIcon.setImageResource(if (isBtConnecting) R.drawable.ic_bluetooth else R.drawable.ic_wifi)
+                ivConnectionIcon.setColorFilter(0xFF2563EB.toInt())
             }
-            PhoneCallController.Turn.REMOTE_SPEAKING -> {
-                tvPttTurnIndicator.text = getString(R.string.ptt_turn_remote)
-                tvPttTurnIndicator.setTextColor(0xFFF59E0B.toInt())
-            }
-            PhoneCallController.Turn.INTERRUPTED -> {
-                tvPttTurnIndicator.text = getString(R.string.call_turn_barging_in)
-                tvPttTurnIndicator.setTextColor(getColor(R.color.phone_call_barge_in))
-            }
-            PhoneCallController.Turn.OFFLINE -> {
-                tvPttTurnIndicator.text = getString(R.string.ptt_turn_offline)
-                tvPttTurnIndicator.setTextColor(0xFFEF4444.toInt())
-            }
-            PhoneCallController.Turn.ERROR -> {
-                tvPttTurnIndicator.text = "❌ Error"
-                tvPttTurnIndicator.setTextColor(0xFFEF4444.toInt())
+            else -> {
+                tvCallConnectionStatus.text = "Disconnected"
+                tvCallConnectionStatus.setTextColor(0xFF64748B.toInt())
+                layoutConnectionPill.setBackgroundResource(R.drawable.bg_status_disconnected)
+                ivConnectionIcon.setImageResource(if (isBluetoothModeActive) R.drawable.ic_bluetooth else R.drawable.ic_wifi)
+                ivConnectionIcon.setColorFilter(0xFF64748B.toInt())
             }
         }
 
-        // State Banner & Action Button
+        // Keep all controller connection flags synchronized
+        pttStateMachine.setTransportConnected(isAnyConnected)
+        conversationController.setTransportConnected(isAnyConnected)
+        phoneCallController.setTransportConnected(isAnyConnected)
+    }
+
+    private fun appendCallConversationLog(entry: String) {
+        val current = tvCallConversationLog.text.toString()
+        val placeholder = "No conversation history yet."
+        val lines = if (current == placeholder || current == "Call dialogue cleared.") {
+            listOf(entry)
+        } else {
+            (current.split("\n") + entry).takeLast(10)
+        }
+        tvCallConversationLog.text = lines.joinToString("\n")
+    }
+
+    private fun updatePhoneCallUi(
+        state: PhoneCallController.State,
+        _turn: PhoneCallController.Turn
+    ) {
+        if (activeVoiceMode != VoiceInteractionMode.PHONE_CALL) return
+
+        // 1. Call Timer & Waveform Mode
+        if (phoneCallController.isCallActive) {
+            if (chronometerCall.visibility != View.VISIBLE) {
+                chronometerCall.base = SystemClock.elapsedRealtime()
+                chronometerCall.start()
+                chronometerCall.visibility = View.VISIBLE
+            }
+        } else {
+            chronometerCall.stop()
+            chronometerCall.visibility = View.GONE
+        }
+
+        when (state) {
+            PhoneCallController.State.SPEECH_DETECTED -> waveformCall.setMode(AudioWaveformView.Mode.SPEAKING_LOCAL)
+            PhoneCallController.State.PLAYING_TTS -> waveformCall.setMode(AudioWaveformView.Mode.SPEAKING_REMOTE)
+            PhoneCallController.State.BARGE_IN -> waveformCall.setMode(AudioWaveformView.Mode.BARGE_IN)
+            else -> waveformCall.setMode(AudioWaveformView.Mode.IDLE)
+        }
+
+        // 2. Call Status Badge & Processing text (Mockup Screen 9, 10, 11)
         when (state) {
             PhoneCallController.State.DISCONNECTED -> {
-                tvPttStateBanner.text = "State: DISCONNECTED (Connect Wi-Fi or Bluetooth)"
-                tvPttStateBanner.setBackgroundColor(0xFF1E293B.toInt())
-                btnPushToTalk.text = getString(R.string.call_start)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF475569.toInt())
-                btnPushToTalk.isEnabled = true
+                tvCallStatusBadge.text = "Offline"
+                tvCallStatusBadge.setTextColor(0xFFEF4444.toInt())
+                tvCallProcessingStatus.text = "Transport Disconnected (Connect Wi-Fi or Bluetooth)"
             }
             PhoneCallController.State.IDLE -> {
-                tvPttStateBanner.text = "State: IDLE (Tap to start phone call)"
-                tvPttStateBanner.setBackgroundColor(0xFF1E293B.toInt())
-                btnPushToTalk.text = getString(R.string.call_start)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF10B981.toInt())
-                btnPushToTalk.isEnabled = true
+                tvCallStatusBadge.text = "Ready to start call"
+                tvCallStatusBadge.setTextColor(0xFF0F172A.toInt())
+                tvCallProcessingStatus.text = "Connected and waiting..."
             }
+            PhoneCallController.State.CALL_CONNECTING -> {
+                tvCallStatusBadge.text = "Connecting..."
+                tvCallStatusBadge.setTextColor(0xFFF59E0B.toInt())
+                tvCallProcessingStatus.text = "Establishing call session..."
+            }
+            PhoneCallController.State.CALL_CONNECTED,
             PhoneCallController.State.LISTENING -> {
-                tvPttStateBanner.text = getString(R.string.call_state_listening)
-                tvPttStateBanner.setBackgroundColor(0xFF065F46.toInt())
-                btnPushToTalk.text = getString(R.string.call_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+                tvCallStatusBadge.text = "Listening for speech..."
+                tvCallStatusBadge.setTextColor(0xFF0F172A.toInt())
+                tvCallProcessingStatus.text = "Speak naturally, we'll detect it automatically"
             }
             PhoneCallController.State.SPEECH_DETECTED -> {
-                tvPttStateBanner.text = "🔴 State: SPEECH DETECTED (Capturing utterance...)"
-                tvPttStateBanner.setBackgroundColor(0xFF991B1B.toInt())
-                btnPushToTalk.text = getString(R.string.call_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+                tvCallStatusBadge.text = "You are speaking..."
+                tvCallStatusBadge.setTextColor(0xFF10B981.toInt())
+                tvCallProcessingStatus.text = "Capturing speech audio..."
             }
             PhoneCallController.State.PROCESSING_STT -> {
-                tvPttStateBanner.text = getString(R.string.call_state_processing)
-                tvPttStateBanner.setBackgroundColor(0xFF312E81.toInt())
-                btnPushToTalk.text = getString(R.string.call_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+                tvCallStatusBadge.text = "Processing speech..."
+                tvCallStatusBadge.setTextColor(0xFF0284C7.toInt())
+                tvCallProcessingStatus.text = "Converting voice to text..."
             }
-            PhoneCallController.State.SENDING -> {
-                tvPttStateBanner.text = getString(R.string.call_state_sending)
-                tvPttStateBanner.setBackgroundColor(0xFF047857.toInt())
-                btnPushToTalk.text = getString(R.string.call_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+            PhoneCallController.State.SENDING_TEXT -> {
+                tvCallStatusBadge.text = "Transmitting to peer..."
+                tvCallStatusBadge.setTextColor(0xFF0284C7.toInt())
+                tvCallProcessingStatus.text = "Sending recognized transcript..."
             }
-            PhoneCallController.State.PLAYING_REMOTE -> {
-                tvPttStateBanner.text = getString(R.string.call_state_playing)
-                tvPttStateBanner.setBackgroundColor(0xFF78350F.toInt())
-                btnPushToTalk.text = getString(R.string.call_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+            PhoneCallController.State.RECEIVING_TEXT -> {
+                tvCallStatusBadge.text = "Receiving speech..."
+                tvCallStatusBadge.setTextColor(0xFF0284C7.toInt())
+                tvCallProcessingStatus.text = "Incoming message from peer..."
             }
-            PhoneCallController.State.INTERRUPTED -> {
-                tvPttStateBanner.text = getString(R.string.call_state_interrupted)
-                tvPttStateBanner.setBackgroundColor(0xFFB45309.toInt())
-                btnPushToTalk.text = getString(R.string.call_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+            PhoneCallController.State.PLAYING_TTS -> {
+                tvCallStatusBadge.text = "Remote user is speaking..."
+                tvCallStatusBadge.setTextColor(0xFF0284C7.toInt())
+                tvCallProcessingStatus.text = "Playing synthesized audio (Barge-in ready)"
             }
-            PhoneCallController.State.RETURNING_TO_LISTEN -> {
-                tvPttStateBanner.text = getString(R.string.call_state_settling)
-                tvPttStateBanner.setBackgroundColor(0xFF334155.toInt())
-                btnPushToTalk.text = getString(R.string.call_stop)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
-                btnPushToTalk.isEnabled = true
+            PhoneCallController.State.BARGE_IN -> {
+                tvCallStatusBadge.text = "Interrupting remote speech..."
+                tvCallStatusBadge.setTextColor(0xFFEF4444.toInt())
+                tvCallProcessingStatus.text = "New speech detected. Stopping playback."
+            }
+            PhoneCallController.State.CALL_ENDING -> {
+                tvCallStatusBadge.text = "Ending call..."
+                tvCallStatusBadge.setTextColor(0xFFEF4444.toInt())
+                tvCallProcessingStatus.text = "Releasing audio resources..."
             }
             PhoneCallController.State.ERROR -> {
-                tvPttStateBanner.text = "❌ State: ERROR"
-                tvPttStateBanner.setBackgroundColor(0xFF7F1D1D.toInt())
-                btnPushToTalk.text = getString(R.string.call_start)
-                btnPushToTalk.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF475569.toInt())
-                btnPushToTalk.isEnabled = true
+                tvCallStatusBadge.text = "Call Error"
+                tvCallStatusBadge.setTextColor(0xFFEF4444.toInt())
+                tvCallProcessingStatus.text = "Pipeline error encountered"
             }
+        }
+
+        // 3. Call Action Button
+        btnCallAction.backgroundTintList = null
+        if (phoneCallController.isCallActive) {
+            btnCallAction.text = "📵 End Call"
+            btnCallAction.setBackgroundResource(R.drawable.bg_call_button_red)
+            btnCallAction.isEnabled = true
+        } else {
+            btnCallAction.text = "📞 Start Call"
+            btnCallAction.setBackgroundResource(R.drawable.bg_call_button_green)
+            btnCallAction.isEnabled = true
         }
     }
 
@@ -2385,14 +2678,14 @@ class MainActivity : AppCompatActivity() {
         val message = AudioMessage.createNormal(text, langCode)
 
         if (transport == null || !transport.isConnected()) {
-            Log.w(TAG, "PhoneCall: Send failed - transport unavailable")
-            appendConversationLog("⚠ [Not Sent] You: $text (Transport disconnected)")
+            Log.w("PHONE_CALL", "Send failed - transport unavailable")
+            appendCallConversationLog("⚠ [Not Sent] You: $text (Transport disconnected)")
             phoneCallController.onSttComplete(hasValidText = false)
             return
         }
 
         val transportName = if (transport is WifiSocketTransport) "Wi-Fi" else "Bluetooth"
-        Log.i(TAG, "PhoneCall: Sending via $transportName")
+        Log.i("PHONE_CALL", "PHONE_CALL: sending text via $transportName")
 
         lifecycleScope.launch {
             try {
@@ -2400,8 +2693,9 @@ class MainActivity : AppCompatActivity() {
                 val serializedBytes = MessageProtocol.serializeMessage(message).size
                 val savings = MessageProtocol.calculateSavings(serializedBytes, audioDurationSec)
 
-                Log.i(TAG, "PhoneCall: Message sent in ${sendDurationMs}ms ($serializedBytes bytes)")
+                Log.i("PHONE_CALL", "PHONE_CALL: text sent (${sendDurationMs}ms, $serializedBytes bytes)")
                 runOnUiThread {
+                    appendCallConversationLog("You: $text")
                     appendConversationLog("You: $text")
                     if (transport is WifiSocketTransport) {
                         appendChatLog("📤 [Call] ${message.text.take(40)}...")
@@ -2412,12 +2706,12 @@ class MainActivity : AppCompatActivity() {
                         tvBtMetricPayload.text = savings.formattedSummary
                         tvBtMetricLatency.text = "Sender send: ${sendDurationMs} ms | Frame: ${serializedBytes} B"
                     }
-                    phoneCallController.onMessageSent()
+                    phoneCallController.onMessageSent(sendDurationMs)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "PhoneCall: Send exception", e)
+                Log.e("PHONE_CALL", "Send exception", e)
                 runOnUiThread {
-                    appendConversationLog("⚠ [Failed] You: $text (${e.message})")
+                    appendCallConversationLog("⚠ [Failed] You: $text (${e.message})")
                     phoneCallController.onSttComplete(hasValidText = false)
                 }
             }

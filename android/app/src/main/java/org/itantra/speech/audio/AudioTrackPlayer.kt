@@ -111,10 +111,20 @@ class AudioTrackPlayer(
                 isPlaying = false
 
                 onPlaybackFinished?.invoke()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.i(TAG, "Playback cancelled or interrupted (barge-in)")
+                isPlaying = false
+                try {
+                    audioTrack?.release()
+                } catch (ignored: Throwable) {}
+                audioTrack = null
+                // Do not invoke onPlaybackFinished on intentional cancellation
             } catch (e: Throwable) {
                 Log.e(TAG, "Playback exception: ${e.message}", e)
                 isPlaying = false
-                audioTrack?.release()
+                try {
+                    audioTrack?.release()
+                } catch (ignored: Throwable) {}
                 audioTrack = null
                 onPlaybackFinished?.invoke()
             }

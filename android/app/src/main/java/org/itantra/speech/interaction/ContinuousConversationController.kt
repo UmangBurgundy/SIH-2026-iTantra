@@ -71,9 +71,10 @@ class ContinuousConversationController(
 
         if (!connected) {
             if (isConversationActive) {
-                Log.w(TAG, "Conversation: Transport unavailable during active conversation")
+                Log.w(TAG, "Conversation: Transport unavailable during active conversation (continuing in standalone mode)")
+            } else {
+                transitionTo(State.DISCONNECTED)
             }
-            transitionTo(State.DISCONNECTED)
         } else {
             if (currentState == State.DISCONNECTED) {
                 if (isConversationActive) {
@@ -90,13 +91,9 @@ class ContinuousConversationController(
      * Starts hands-free continuous conversation mode.
      */
     fun startConversation(): Boolean {
-        if (!isTransportConnected) {
-            Log.w(TAG, "Conversation: Cannot start - transport disconnected")
-            return false
-        }
         settleJob?.cancel()
         isConversationActive = true
-        Log.i(TAG, "Conversation: Started")
+        Log.i(TAG, "Conversation: Started (transportConnected=$isTransportConnected)")
         transitionTo(State.LISTENING)
         onRequestResumeListening?.invoke()
         return true

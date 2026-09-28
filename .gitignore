@@ -43,6 +43,8 @@ captures/
 scratch/
 dataset/
 *.log
+screen_*.png
+android/screen_*.png
 
 # ==========================================
 # Large AI Models (>100MB strictly blocked by GitHub)

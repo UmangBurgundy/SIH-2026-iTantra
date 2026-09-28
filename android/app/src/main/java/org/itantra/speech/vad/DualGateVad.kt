@@ -26,6 +26,34 @@ class DualGateVad(
 
     private var vadWebRtc: VadWebRTC? = null
 
+    /**
+     * When true, activates Phone Call barge-in protection mode:
+     * - Elevates the Energy Gate threshold to reject device speaker acoustic leakage.
+     * - Freezes background noise floor adaptation so playback audio doesn't inflate ambient noise estimate.
+     */
+    var bargeInMode: Boolean = false
+
+    /**
+     * Multiplier applied to the adaptive speech threshold during barge-in mode (e.g. 1.8x).
+     */
+    var bargeInThresholdMultiplier: Double = 1.8
+
+    /**
+     * Minimum absolute RMS threshold required during barge-in mode, protecting against
+     * speaker echo even in quiet environments.
+     */
+    var bargeInSpeechThreshold: Double = 120.0
+
+    /**
+     * Evaluates effective threshold considering bargeInMode.
+     */
+    val currentEffectiveThreshold: Double
+        get() = if (bargeInMode) {
+            maxOf(bargeInSpeechThreshold, adaptiveNoiseFloor.speechThreshold * bargeInThresholdMultiplier)
+        } else {
+            adaptiveNoiseFloor.speechThreshold
+        }
+
     data class Decision(
         val isSpeech: Boolean,
         val rms: Double,
@@ -38,7 +66,7 @@ class DualGateVad(
     /**
      * Initializes the native WebRTC VAD engine on Android.
      */
-    fun initialize(context: Context? = null) {
+    fun initialize(_context: Context? = null) {
         try {
             val mode = when (vadMode) {
                 0 -> Mode.NORMAL
@@ -73,18 +101,19 @@ class DualGateVad(
         precomputedRms: Double? = null,
         isSpeechActive: Boolean = false
     ): Decision {
+        val effectiveThreshold = currentEffectiveThreshold
         if (pcmBytes.size < 960) {
-            return Decision(false, 0.0, adaptiveNoiseFloor.noiseFloorRms, adaptiveNoiseFloor.speechThreshold, false, false)
+            return Decision(false, 0.0, adaptiveNoiseFloor.noiseFloorRms, effectiveThreshold, false, false)
         }
 
         val rms = precomputedRms ?: AudioUtils.calculateRms(pcmBytes)
 
-        // Gate 1: Adaptive Energy Floor
-        val passedEnergyGate = adaptiveNoiseFloor.exceedsThreshold(rms)
+        // Gate 1: Adaptive Energy Floor with barge-in protection
+        val passedEnergyGate = rms >= effectiveThreshold
 
         // Gate 2: True native WebRTC VAD
         val passedWebRtcGate = try {
-            vadWebRtc?.isSpeech(pcmBytes) ?: (rms >= adaptiveNoiseFloor.speechThreshold * 1.4)
+            vadWebRtc?.isSpeech(pcmBytes) ?: (rms >= effectiveThreshold * 1.4)
         } catch (e: Throwable) {
             Log.w(TAG, "VAD evaluation error: ${e.message}")
             false
@@ -92,14 +121,16 @@ class DualGateVad(
 
         val isSpeech = passedEnergyGate && passedWebRtcGate
 
-        // Update noise floor only during non-speech frames
-        adaptiveNoiseFloor.update(rms, isSpeechActive || isSpeech)
+        // Update noise floor only during non-speech frames and NOT during bargeInMode (remote TTS playing)
+        if (!bargeInMode) {
+            adaptiveNoiseFloor.update(rms, isSpeechActive || isSpeech)
+        }
 
         return Decision(
             isSpeech = isSpeech,
             rms = rms,
             noiseFloorRms = adaptiveNoiseFloor.noiseFloorRms,
-            thresholdRms = adaptiveNoiseFloor.speechThreshold,
+            thresholdRms = effectiveThreshold,
             passedEnergyGate = passedEnergyGate,
             passedWebRtcGate = passedWebRtcGate
         )

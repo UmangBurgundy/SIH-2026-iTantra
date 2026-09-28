@@ -380,8 +380,8 @@ class BluetoothTextTransport(
                 val connectJob = scope.launch(Dispatchers.IO) {
                     try {
                         socket.connect()
-                    } catch (e: IOException) {
-                        throw e
+                    } catch (e: Exception) {
+                        throw IOException("Bluetooth connect failed: ${e.message}", e)
                     }
                 }
 

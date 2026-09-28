@@ -1,1307 +1,1297 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
-    android:padding="16dp">
+    android:background="@color/background">
 
+    <!-- ── 1. Top App Bar ─────────────────────────────────────────── -->
     <LinearLayout
+        android:id="@+id/llTopAppBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:background="#FFFFFF"
+        android:elevation="2dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Header -->
         <TextView
             android:id="@+id/tvHeader"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/title_header"
-            android:textColor="@color/text_primary"
+            android:text="iTantra"
+            android:textColor="@color/primary"
             android:textSize="20sp"
-            android:textStyle="bold"
-            android:gravity="center" />
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tvSubtitle"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="@string/subtitle"
-            android:textColor="@color/accent"
-            android:textSize="12sp"
-            android:gravity="center" />
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="Offline Voice"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="12dp"
-            android:background="#334155" />
-
-        <!-- Language Selector -->
+        <!-- Connection Status Pill -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:id="@+id/layoutConnectionPill"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@drawable/bg_status_disconnected"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="5dp">
+
+            <ImageView
+                android:id="@+id/ivConnectionIcon"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:src="@drawable/ic_wifi"
+                app:tint="@color/text_secondary" />
 
             <TextView
+                android:id="@+id/tvCallConnectionStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/label_language"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
-
-            <Spinner
-                android:id="@+id/spinnerLanguage"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:background="#1E293B" />
-
-            <Button
-                android:id="@+id/btnManagePacks"
-                android:layout_width="wrap_content"
-                android:layout_height="38dp"
                 android:layout_marginStart="6dp"
-                android:text="@string/pack_btn_manage"
-                android:textColor="#38BDF8"
-                android:textSize="12sp"
-                android:backgroundTint="#0F172A"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp" />
+                android:text="Disconnected"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Model Status Card -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- Emergency SOS Quick Button -->
+        <ImageButton
+            android:id="@+id/btnQuickSos"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_circle_icon_gray"
+            android:contentDescription="Emergency SOS"
+            android:src="@drawable/ic_sos"
+            app:tint="@color/accent_red" />
+    </LinearLayout>
+
+    <!-- ── 2. Main Content Frame (Tabs) ──────────────────────────── -->
+    <FrameLayout
+        android:id="@+id/flMainContent"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/bottomNavigation"
+        app:layout_constraintTop_toBottomOf="@id/llTopAppBar">
+
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- TAB 1: HOME (Dashboard & Active Communication)               -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <ScrollView
+            android:id="@+id/tabHomeView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp"
-            app:strokeColor="#334155"
-            app:strokeWidth="1dp">
+            android:layout_height="match_parent"
+            android:fillViewport="true">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="12dp">
+                android:padding="16dp">
 
-                <TextView
-                    android:id="@+id/tvEngineStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="STT Engine: IndicSTTBackend"
-                    android:textColor="@color/accent"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvModelStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Model: Checking runtime..."
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/tvMicStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Microphone: Checking permissions..."
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Push-to-Talk Voice Communication Card (Phase 8.8) -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardPtt"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="3dp"
-            app:strokeColor="@color/ptt_card_border"
-            app:strokeWidth="1.5dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="14dp">
-
-                <!-- Header -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/ptt_title"
-                    android:textColor="@color/accent"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-
-                <!-- Voice Input Mode Selector -->
+                <!-- Language Selection Card -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_card_white"
+                    android:elevation="1dp"
+                    android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="8dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="My Language"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp" />
+
+                        <Spinner
+                            android:id="@+id/spinnerLanguage"
+                            android:layout_width="match_parent"
+                            android:layout_height="36dp"
+                            android:layout_marginTop="2dp"
+                            android:background="@drawable/bg_spinner_box"
+                            android:overlapAnchor="false"
+                            android:popupBackground="@drawable/bg_card_white"
+                            android:spinnerMode="dropdown" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/btnSwapLanguage"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginHorizontal="6dp"
+                        android:src="@drawable/ic_swap"
+                        app:tint="@color/text_secondary" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Peer Language"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/tvCallLanguageStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="English"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Communication Mode Selector Segment -->
+                <RadioGroup
+                    android:id="@+id/rgVoiceMode"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_pill_unselected"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:padding="3dp">
+
+                    <RadioButton
+                        android:id="@+id/rbModePtt"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/selector_mode_pill_bg"
+                        app:backgroundTint="@null"
+                        android:button="@null"
+                        android:gravity="center"
+                        android:text="Push-to-Talk"
+                        android:textColor="@color/selector_mode_pill_text"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <RadioButton
+                        android:id="@+id/rbModeContinuous"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/selector_mode_pill_bg"
+                        app:backgroundTint="@null"
+                        android:button="@null"
+                        android:gravity="center"
+                        android:text="Continuous"
+                        android:textColor="@color/selector_mode_pill_text"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <RadioButton
+                        android:id="@+id/rbModePhoneCall"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/selector_mode_pill_bg"
+                        app:backgroundTint="@null"
+                        android:button="@null"
+                        android:checked="true"
+                        android:gravity="center"
+                        android:text="Phone Call"
+                        android:textColor="@color/selector_mode_pill_text"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <RadioButton
+                        android:id="@+id/rbModeAuto"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+                </RadioGroup>
+
+                <!-- ═════════ CENTER DYNAMIC VOICE STAGE ═════════ -->
+                <FrameLayout
+                    android:id="@+id/layoutDynamicStage"
+                    android:layout_width="match_parent"
+                    android:layout_height="280dp"
+                    android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_card_white"
+                    android:elevation="1dp">
+
+                    <!-- 1. PUSH-TO-TALK STAGE -->
+                    <LinearLayout
+                        android:id="@+id/layoutPttContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="16dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/tvPttTurnIndicator"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Push-to-Talk Mode"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <!-- Concentric Outer Ring for Mic Button -->
+                        <FrameLayout
+                            android:layout_width="160dp"
+                            android:layout_height="160dp"
+                            android:layout_marginVertical="10dp"
+                            android:background="@drawable/bg_circle_icon_gray">
+
+                            <Button
+                                android:id="@+id/btnPushToTalk"
+                                android:layout_width="136dp"
+                                android:layout_height="136dp"
+                                android:layout_gravity="center"
+                                android:background="@drawable/bg_circle_ptt_idle"
+                                app:backgroundTint="@null"
+                                android:text="🎙️\nHOLD TO SPEAK"
+                                android:textColor="#FFFFFF"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:gravity="center"
+                                android:clickable="true"
+                                android:focusable="true" />
+                        </FrameLayout>
+
+                        <!-- Sleek Pill Status Banner -->
+                        <TextView
+                            android:id="@+id/tvPttStateBanner"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_pill_status_disconnected"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="6dp"
+                            android:text="Offline (Connect to peer)"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvPttHint"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="Press and hold button to speak, release to send"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/tvPttTransportStatus"
+                            android:layout_width="0dp"
+                            android:layout_height="0dp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <!-- 2. CONTINUOUS STAGE -->
+                    <LinearLayout
+                        android:id="@+id/layoutContinuousContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="16dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Continuous Conversation"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+
+                        <org.itantra.speech.ui.AudioWaveformView
+                            android:id="@+id/waveformContinuous"
+                            android:layout_width="match_parent"
+                            android:layout_height="90dp"
+                            android:layout_marginVertical="20dp" />
+
+                        <TextView
+                            android:id="@+id/tvContinuousStateBanner"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Listening for speech..."
+                            android:textColor="@color/text_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Speak naturally, we'll detect it automatically"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp" />
+
+                        <Button
+                            android:id="@+id/btnContinuousAction"
+                            android:layout_width="wrap_content"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="14dp"
+                            android:background="@drawable/bg_pill_button_green"
+                            app:backgroundTint="@null"
+                            android:paddingHorizontal="24dp"
+                            android:text="🎙️ Start Conversation"
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- 3. PHONE CALL STAGE (Primary Full Duplex) -->
+                    <LinearLayout
+                        android:id="@+id/layoutPhoneCallContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="16dp"
+                        android:visibility="visible">
+
+                        <Chronometer
+                            android:id="@+id/chronometerCall"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <org.itantra.speech.ui.AudioWaveformView
+                            android:id="@+id/waveformCall"
+                            android:layout_width="match_parent"
+                            android:layout_height="72dp"
+                            android:layout_marginVertical="10dp" />
+
+                        <TextView
+                            android:id="@+id/tvCallStatusBadge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Ready to start call"
+                            android:textColor="@color/text_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvCallProcessingStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Connected and waiting..."
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:gravity="center"
+                            android:orientation="horizontal">
+
+                            <ImageButton
+                                android:id="@+id/btnCallSpeaker"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:background="@drawable/bg_circle_icon_gray"
+                                android:contentDescription="Speakerphone"
+                                android:src="@drawable/ic_speaker"
+                                app:tint="@color/text_primary" />
+
+                            <Button
+                                android:id="@+id/btnCallAction"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:layout_marginHorizontal="20dp"
+                                android:background="@drawable/bg_call_button_green"
+                                app:backgroundTint="@null"
+                                android:paddingHorizontal="24dp"
+                                android:text="📞 Start Call"
+                                android:textColor="#FFFFFF"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <ImageButton
+                                android:id="@+id/btnCallMute"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:background="@drawable/bg_circle_icon_gray"
+                                android:contentDescription="Mute Mic"
+                                android:src="@drawable/ic_mic"
+                                app:tint="@color/text_primary" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvCallMicIndicator"
+                            android:layout_width="0dp"
+                            android:layout_height="0dp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/tvCallRemoteSpeakerIndicator"
+                            android:layout_width="0dp"
+                            android:layout_height="0dp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/tvCallHint"
+                            android:layout_width="0dp"
+                            android:layout_height="0dp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </FrameLayout>
+
+                <!-- Live Conversation Transcript Card -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_card_white"
+                    android:elevation="1dp"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Live Transcript"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <Button
+                            android:id="@+id/btnTtsSpeakTranscript"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="@drawable/bg_circle_icon_gray"
+                            android:text="🔊"
+                            android:textSize="14sp"
+                            android:padding="0dp"
+                            android:gravity="center" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvTranscript"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="Speak to see recognized text here..."
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/tvStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Ready"
+                        android:textColor="@color/primary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- TAB 2: HISTORY (Chat History & Transcript Log)               -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:id="@+id/tabHistoryView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Conversation History"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btnCallClearLog"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_circle_icon_gray"
+                    android:text="🗑️"
+                    android:textSize="14sp"
+                    android:padding="0dp"
+                    android:gravity="center" />
+
+                <Button
+                    android:id="@+id/btnPttClearLog"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/btnClearTranscript"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_white"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvCallConversationLog"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:lineSpacingMultiplier="1.2"
+                        android:text="No conversation history yet."
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvPttConversationLog"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvLog"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
+
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- TAB 3: SETTINGS (Language Packs, Connections, Telemetry)     -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <ScrollView
+            android:id="@+id/tabSettingsView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Settings &amp; Tools"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <!-- Language Pack Manager -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_card_white"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="14dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Offline Language Packs"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Download and manage Indic voice models"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnManagePacks"
+                        android:layout_width="wrap_content"
+                        android:layout_height="38dp"
+                        android:text="Manage"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Transport Mode (Wi-Fi / BT) Selector -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_card_white"
+                    android:orientation="vertical"
+                    android:padding="14dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/ptt_mode_label"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
+                        android:text="Connection Transport"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
                         android:textStyle="bold" />
 
                     <RadioGroup
-                        android:id="@+id/rgVoiceMode"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="8dp"
-                        android:orientation="horizontal">
+                        android:id="@+id/rgTransportMode"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_pill_unselected"
+                        android:orientation="horizontal"
+                        android:padding="3dp">
 
                         <RadioButton
-                            android:id="@+id/rbModePtt"
+                            android:id="@+id/rbWifi"
                             android:layout_width="0dp"
-                            android:layout_height="wrap_content"
+                            android:layout_height="match_parent"
                             android:layout_weight="1"
-                            android:text="@string/ptt_mode_ptt"
-                            android:textColor="@color/text_primary"
-                            android:textSize="11sp"
-                            android:checked="true" />
+                            android:background="@drawable/selector_mode_pill_bg"
+                            app:backgroundTint="@null"
+                            android:button="@null"
+                            android:checked="true"
+                            android:gravity="center"
+                            android:text="Wi-Fi Socket"
+                            android:textColor="@color/selector_mode_pill_text"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
 
                         <RadioButton
-                            android:id="@+id/rbModeAuto"
+                            android:id="@+id/rbBluetooth"
                             android:layout_width="0dp"
-                            android:layout_height="wrap_content"
+                            android:layout_height="match_parent"
                             android:layout_weight="1"
-                            android:text="@string/ptt_mode_auto"
-                            android:textColor="@color/text_primary"
-                            android:textSize="11sp" />
-
-                        <RadioButton
-                            android:id="@+id/rbModeContinuous"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/ptt_mode_continuous"
-                            android:textColor="@color/text_primary"
-                            android:textSize="11sp" />
-
-                        <RadioButton
-                            android:id="@+id/rbModePhoneCall"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/ptt_mode_phone_call"
-                            android:textColor="@color/text_primary"
-                            android:textSize="11sp" />
+                            android:background="@drawable/selector_mode_pill_bg"
+                            app:backgroundTint="@null"
+                            android:button="@null"
+                            android:gravity="center"
+                            android:text="Bluetooth Classic"
+                            android:textColor="@color/selector_mode_pill_text"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
                     </RadioGroup>
+
+                    <!-- Wi-Fi Controls Container -->
+                    <LinearLayout
+                        android:id="@+id/layoutWifiControls"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tvWifiConnectionStatus"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Wi-Fi: Disconnected"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvLocalIp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="My IP: Checking..."
+                                android:textColor="@color/primary"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <!-- Host Server Section -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="Host Local Wi-Fi Server:"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnWifiHost"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:minHeight="44dp"
+                                android:paddingVertical="8dp"
+                                android:layout_weight="1"
+                                android:text="Start Host Server"
+                                android:textAllCaps="false"
+                                android:textSize="12sp" />
+
+                            <Button
+                                android:id="@+id/btnWifiDisconnect"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:minHeight="44dp"
+                                android:paddingVertical="8dp"
+                                android:layout_marginStart="8dp"
+                                android:layout_weight="1"
+                                android:text="Disconnect"
+                                android:textAllCaps="false"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+
+                        <!-- Join Peer Section -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="Connect to Peer Server:"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <EditText
+                                android:id="@+id/etPeerIp"
+                                android:layout_width="0dp"
+                                android:layout_height="44dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_input_field"
+                                android:hint="Peer IP (e.g. 192.168.43.1)"
+                                android:inputType="phone"
+                                android:textColor="@color/text_primary"
+                                android:textColorHint="@color/text_muted"
+                                android:textSize="13sp" />
+
+                            <Button
+                                android:id="@+id/btnWifiJoin"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:minHeight="44dp"
+                                android:paddingVertical="8dp"
+                                android:layout_marginStart="8dp"
+                                android:paddingHorizontal="18dp"
+                                android:text="Connect"
+                                android:textAllCaps="false"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Bluetooth Controls Container -->
+                    <LinearLayout
+                        android:id="@+id/layoutBtControls"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tvBtConnectionStatus"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="BT: Disconnected"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvBtConnectedDevice"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Peer: None"
+                                android:textColor="@color/primary"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <!-- Action Buttons Row 1: Discover & Scan -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnBtHost"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:minHeight="44dp"
+                                android:paddingVertical="8dp"
+                                android:layout_weight="1"
+                                android:text="Make Discoverable"
+                                android:textAllCaps="false"
+                                android:textSize="12sp" />
+
+                            <Button
+                                android:id="@+id/btnBtDiscover"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:minHeight="44dp"
+                                android:paddingVertical="8dp"
+                                android:layout_marginStart="8dp"
+                                android:layout_weight="1"
+                                android:text="Scan Devices"
+                                android:textAllCaps="false"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+
+                        <!-- Action Button Row 2: Disconnect -->
+                        <Button
+                            android:id="@+id/btnBtDisconnect"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="42dp"
+                            android:paddingVertical="8dp"
+                            android:layout_marginTop="8dp"
+                            android:text="Disconnect Bluetooth"
+                            android:textAllCaps="false"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvBtDeviceListHeader"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="Available Paired Devices:"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:id="@+id/layoutBtDeviceList"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
                 </LinearLayout>
 
-                <!-- Status & Turn Row -->
+                <!-- Emergency Alert & Priority Section (Phase 8.5) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_card_white"
+                    android:orientation="vertical"
+                    android:padding="14dp">
 
                     <TextView
-                        android:id="@+id/tvPttTransportStatus"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:background="#0F172A"
-                        android:padding="6dp"
-                        android:text="🌐 Wi-Fi: Disconnected"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp" />
-
-                    <TextView
-                        android:id="@+id/tvPttTurnIndicator"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="#0F172A"
-                        android:padding="6dp"
-                        android:text="@string/ptt_turn_offline"
-                        android:textColor="@color/accent"
-                        android:textSize="11sp"
+                        android:text="🚨 Emergency Alert Triggers"
+                        android:textColor="@color/accent_red"
+                        android:textSize="14sp"
                         android:textStyle="bold" />
+
+                    <GridLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:columnCount="2">
+
+                        <Button
+                            android:id="@+id/btnAlertFire"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="3dp"
+                            android:backgroundTint="#EF4444"
+                            android:text="🔥 Fire"
+                            android:textSize="12sp" />
+
+                        <Button
+                            android:id="@+id/btnAlertMedical"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="3dp"
+                            android:backgroundTint="#DC2626"
+                            android:text="🚑 Medical"
+                            android:textSize="12sp" />
+
+                        <Button
+                            android:id="@+id/btnAlertHazard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="3dp"
+                            android:backgroundTint="#F59E0B"
+                            android:text="⚠️ Hazard"
+                            android:textSize="12sp" />
+
+                        <Button
+                            android:id="@+id/btnAlertEmergency"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="3dp"
+                            android:backgroundTint="#B91C1C"
+                            android:text="📢 SOS"
+                            android:textSize="12sp" />
+                    </GridLayout>
+
+                    <Button
+                        android:id="@+id/btnTestInterruption"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="⚡ Test Normal TTS Interrupted by Alert"
+                        android:textSize="11sp" />
                 </LinearLayout>
 
-                <!-- PTT State Banner -->
-                <TextView
-                    android:id="@+id/tvPttStateBanner"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="#0F172A"
-                    android:padding="8dp"
-                    android:gravity="center"
-                    android:text="State: DISCONNECTED (Connect Wi-Fi or Bluetooth)"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-
-                <!-- Central Push-to-Talk Button -->
-                <Button
-                    android:id="@+id/btnPushToTalk"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginTop="12dp"
-                    android:backgroundTint="@color/ptt_idle_bg"
-                    android:text="@string/ptt_hold_to_speak"
-                    android:textColor="#FFFFFF"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvPttHint"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:gravity="center"
-                    android:text="@string/ptt_hint_hold"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="11sp" />
-
-                <!-- Conversation Dialogue Log -->
+                <!-- Engine & Telemetry Diagnostics -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:background="@drawable/bg_card_white"
+                    android:orientation="vertical"
+                    android:padding="14dp">
 
                     <TextView
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="💬 Conversation Dialogue:"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
+                        android:text="System Diagnostics &amp; Telemetry"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
                         android:textStyle="bold" />
 
-                    <Button
-                        android:id="@+id/btnPttClearLog"
+                    <TextView
+                        android:id="@+id/tvEngineStatus"
                         android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:backgroundTint="#334155"
-                        android:paddingLeft="8dp"
-                        android:paddingRight="8dp"
-                        android:text="Clear"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Engine: Initializing..."
                         android:textColor="@color/text_secondary"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/tvPttConversationLog"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:background="#0F172A"
-                    android:padding="8dp"
-                    android:minLines="3"
-                    android:maxLines="6"
-                    android:text="Dialogue is empty. Hold button to speak."
-                    android:textColor="@color/text_primary"
-                    android:textSize="12sp"
-                    android:fontFamily="monospace" />
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Start/Stop Button -->
-        <Button
-            android:id="@+id/btnToggleListening"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="16dp"
-            android:backgroundTint="@color/accent"
-            android:text="@string/btn_start_listening"
-            android:textColor="#0F172A"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <!-- Speech Status Bar -->
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:background="#1E293B"
-            android:padding="10dp"
-            android:text="@string/status_idle"
-            android:textColor="@color/text_primary"
-            android:textSize="14sp" />
-
-        <!-- Transcript Card Header with Clear Button -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/label_transcript"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/btnClearTranscript"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minHeight="0dp"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="4dp"
-                android:text="Clear"
-                android:textColor="@color/accent"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="8dp"
-            app:strokeColor="#334155"
-            app:strokeWidth="1dp">
-
-            <TextView
-                android:id="@+id/tvTranscript"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="100dp"
-                android:padding="12dp"
-                android:text="@string/default_transcript_placeholder"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp" />
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Performance Metrics Grid -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/label_metrics"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:orientation="vertical"
-            android:background="#1E293B"
-            android:padding="12dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/tvMetricLatency"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/metric_latency"
-                    android:textColor="@color/accent"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/tvMetricRtf"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/metric_rtf"
-                    android:textColor="@color/accent"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/tvMetricAudioDuration"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/metric_audio_duration"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/tvMetricRam"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/metric_ram"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/tvMetricNoiseFloor"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Noise: -- RMS"
-                    android:textColor="#94A3B8"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/tvMetricSpeechThreshold"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="VAD Gate: Mode 2"
-                    android:textColor="#94A3B8"
-                    android:textSize="12sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- TTS Control Card (Phase 8.4) -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp"
-            app:strokeColor="#334155"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Text-to-Speech (MMS-TTS VITS INT8)"
-                    android:textColor="@color/accent"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvTtsModelStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="TTS Model: Initializing..."
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-
-                <EditText
-                    android:id="@+id/etTtsInput"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="#0F172A"
-                    android:padding="10dp"
-                    android:hint="Enter text to speak..."
-                    android:textColorHint="#64748B"
-                    android:text="नमस्ते आपका क्या नाम है"
-                    android:textColor="@color/text_primary"
-                    android:textSize="14sp" />
-
-                <!-- Preset Quick Buttons -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
-
-                    <Button
-                        android:id="@+id/btnQuickPhrase1"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="नमस्ते"
-                        android:textColor="@color/accent"
                         android:textSize="11sp" />
 
-                    <Button
-                        android:id="@+id/btnQuickPhrase2"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="0dp"
+                    <TextView
+                        android:id="@+id/tvModelStatus"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="मदद चाहिए"
-                        android:textColor="@color/accent"
+                        android:text="Model: Loaded"
+                        android:textColor="@color/text_secondary"
                         android:textSize="11sp" />
 
-                    <Button
-                        android:id="@+id/btnQuickPhrase3"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="0dp"
+                    <TextView
+                        android:id="@+id/tvMicStatus"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="धुआं पाया"
-                        android:textColor="@color/accent"
+                        android:text="Mic: Idle"
+                        android:textColor="@color/text_secondary"
                         android:textSize="11sp" />
-                </LinearLayout>
 
-                <!-- TTS Actions -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:orientation="horizontal">
+                    <TextView
+                        android:id="@+id/tvMetricLatency"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="STT Latency: -- ms"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvMetricRtf"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="RTF: --"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvMetricRam"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="RAM: -- MB"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvMetricNoiseFloor"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Noise Floor: --"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvMetricSpeechThreshold"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Speech Threshold: --"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+
+                    <!-- Preserved legacy views to guarantee zero runtime NullPointerExceptions -->
+                    <TextView
+                        android:id="@+id/tvMetricAudioDuration"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                    <Button
+                        android:id="@+id/btnToggleListening"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                    <!-- Preserved TTS views -->
+                    <TextView
+                        android:id="@+id/tvTtsModelStatus"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                    <EditText
+                        android:id="@+id/etTtsInput"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <Button
                         android:id="@+id/btnTtsSpeak"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="2"
-                        android:backgroundTint="@color/accent"
-                        android:text="▶ Speak Text"
-                        android:textColor="#0F172A"
-                        android:textStyle="bold" />
-
-                    <Button
-                        android:id="@+id/btnTtsSpeakTranscript"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="2"
-                        android:layout_marginStart="6dp"
-                        android:text="Speak Transcript"
-                        android:textColor="@color/accent"
-                        android:textSize="11sp" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <Button
                         android:id="@+id/btnTtsStop"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="6dp"
-                        android:text="Stop"
-                        android:textColor="#EF4444"
-                        android:textSize="11sp" />
-                </LinearLayout>
-
-                <!-- TTS Telemetry Grid -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:orientation="vertical"
-                    android:background="#0F172A"
-                    android:padding="8dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:id="@+id/tvTtsMetricLatency"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Synth: -- ms"
-                            android:textColor="@color/accent"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvTtsMetricPlaybackDelay"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Playback Start: -- ms"
-                            android:textColor="@color/accent"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:id="@+id/tvTtsMetricTotal"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Text-to-Audio: -- ms"
-                            android:textColor="#E2E8F0"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvTtsMetricRtf"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="TTS RTF: --"
-                            android:textColor="#E2E8F0"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Emergency Alert & Priority Control Card (Phase 8.5) -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="3dp"
-            app:strokeColor="#EF4444"
-            app:strokeWidth="1.5dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="🚨 Emergency Alert &amp; Priority System"
-                    android:textColor="#EF4444"
-                    android:textStyle="bold"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:id="@+id/tvSchedulerState"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Scheduler: IDLE | Cache: Checking..."
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-
-                <!-- Alert Triggers: Row 1 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <Button
-                        android:id="@+id/btnAlertFire"
-                        style="@style/Widget.MaterialComponents.Button"
+                        android:id="@+id/btnQuickPhrase1"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="4dp"
-                        android:backgroundTint="#DC2626"
-                        android:text="🚨 Fire"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <Button
-                        android:id="@+id/btnAlertMedical"
-                        style="@style/Widget.MaterialComponents.Button"
+                        android:id="@+id/btnQuickPhrase2"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="4dp"
-                        android:backgroundTint="#EA580C"
-                        android:text="🚑 Medical"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
-                </LinearLayout>
-
-                <!-- Alert Triggers: Row 2 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:orientation="horizontal">
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <Button
-                        android:id="@+id/btnAlertHazard"
-                        style="@style/Widget.MaterialComponents.Button"
+                        android:id="@+id/btnQuickPhrase3"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="4dp"
-                        android:backgroundTint="#D97706"
-                        android:text="⚠️ Hazard"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
-
-                    <Button
-                        android:id="@+id/btnAlertEmergency"
-                        style="@style/Widget.MaterialComponents.Button"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="4dp"
-                        android:backgroundTint="#9333EA"
-                        android:text="📢 Notice"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
-                </LinearLayout>
-
-                <!-- Interruption Stress / Test Action -->
-                <Button
-                    android:id="@+id/btnTestInterruption"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="⚡ Test Normal TTS Interrupted by Alert"
-                    android:textColor="#F59E0B"
-                    android:textSize="11sp" />
-
-                <!-- Alert Telemetry Grid -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:orientation="vertical"
-                    android:background="#0F172A"
-                    android:padding="8dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:id="@+id/tvAlertMetricLookup"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Lookup: -- ms"
-                            android:textColor="@color/accent"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvAlertMetricPrep"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Prep: -- ms"
-                            android:textColor="@color/accent"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:id="@+id/tvAlertMetricTotal"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Alert-to-Audio: -- ms"
-                            android:textColor="#EF4444"
-                            android:textStyle="bold"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvAlertMetricStatus"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Cache: -- | Dedup: Active"
-                            android:textColor="#E2E8F0"
-                            android:textSize="11sp" />
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Wi-Fi Text Communication Card (Phase 8.6) -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp"
-            app:strokeColor="#0EA5E9"
-            app:strokeWidth="1.5dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <!-- Header with Status Indicator -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <TextView
+                        android:id="@+id/tvTtsMetricLatency"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="🌐 Wi-Fi Text Transport (Phase 8.6)"
-                        android:textColor="#38BDF8"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <TextView
-                        android:id="@+id/tvWifiConnectionStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="🔴 Disconnected"
-                        android:textColor="#EF4444"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <!-- Dynamic Local IP & Host Session -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                        android:id="@+id/tvTtsMetricPlaybackDelay"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <TextView
-                        android:id="@+id/tvLocalIp"
+                        android:id="@+id/tvTtsMetricTotal"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="My IP: Discovering..."
-                        android:textColor="@color/text_primary"
-                        android:textSize="12sp" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
-                    <Button
-                        android:id="@+id/btnWifiHost"
-                        style="@style/Widget.MaterialComponents.Button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="38dp"
-                        android:backgroundTint="#0284C7"
-                        android:text="Host Session"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
-                </LinearLayout>
-
-                <!-- Peer Connection Input -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <EditText
-                        android:id="@+id/etPeerIp"
+                    <TextView
+                        android:id="@+id/tvTtsMetricRtf"
                         android:layout_width="0dp"
-                        android:layout_height="40dp"
-                        android:layout_weight="1"
-                        android:background="#1E293B"
-                        android:hint="Peer IP (e.g. 192.168.43.1)"
-                        android:textColorHint="#64748B"
-                        android:textColor="@color/text_primary"
-                        android:textSize="12sp"
-                        android:paddingHorizontal="8dp"
-                        android:inputType="text" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
-                    <Button
-                        android:id="@+id/btnWifiJoin"
-                        style="@style/Widget.MaterialComponents.Button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="38dp"
-                        android:layout_marginStart="6dp"
-                        android:backgroundTint="#059669"
-                        android:text="Join"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
+                    <!-- Preserved Alert views -->
+                    <TextView
+                        android:id="@+id/tvSchedulerState"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
-                    <Button
-                        android:id="@+id/btnWifiDisconnect"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="38dp"
-                        android:layout_marginStart="4dp"
-                        android:text="Stop"
-                        android:textColor="#EF4444"
-                        android:textSize="11sp" />
-                </LinearLayout>
+                    <TextView
+                        android:id="@+id/tvAlertMetricLookup"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
-                <!-- Auto Transmit Live STT Switch -->
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/switchAutoSendStt"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="⚡ Auto-Transmit Live STT Utterances to Peer"
-                    android:textColor="#F1F5F9"
-                    android:textSize="12sp" />
+                    <TextView
+                        android:id="@+id/tvAlertMetricPrep"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
-                <!-- Action Test Buttons -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:orientation="horizontal">
+                    <TextView
+                        android:id="@+id/tvAlertMetricTotal"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvAlertMetricStatus"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                    <!-- Preserved Wi-Fi transport views -->
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/switchAutoSendStt"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <Button
                         android:id="@+id/btnWifiSendTest"
-                        style="@style/Widget.MaterialComponents.Button"
                         android:layout_width="0dp"
-                        android:layout_height="38dp"
-                        android:layout_weight="1"
-                        android:backgroundTint="#3B82F6"
-                        android:text="💬 Send Test Text"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <Button
                         android:id="@+id/btnWifiSendAlert"
-                        style="@style/Widget.MaterialComponents.Button"
                         android:layout_width="0dp"
-                        android:layout_height="38dp"
-                        android:layout_weight="1"
-                        android:layout_marginStart="6dp"
-                        android:backgroundTint="#DC2626"
-                        android:text="🚨 Send Alert"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
-                </LinearLayout>
-
-                <!-- Real-time Bandwidth & Latency Telemetry -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical"
-                    android:background="#0F172A"
-                    android:padding="8dp">
-
-                    <TextView
-                        android:id="@+id/tvWifiMetricPayload"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Payload: 0 B (Text) vs 0 KB (PCM) → Dynamic Saving"
-                        android:textColor="#34D399"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <TextView
                         android:id="@+id/tvWifiMetricLatency"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Sender: -- ms | RTT: -- ms | Receiver: -- ms"
-                        android:textColor="#38BDF8"
-                        android:textSize="11sp" />
-                </LinearLayout>
-
-                <!-- Live Chat & Transmission Event Log -->
-                <TextView
-                    android:id="@+id/tvWifiChatLog"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="#1E293B"
-                    android:padding="8dp"
-                    android:text="[Ready] Host or Join session to begin bidirectional text exchange."
-                    android:textColor="#94A3B8"
-                    android:textSize="11sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Transport Mode Selector (Phase 8.7) -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp"
-            app:strokeColor="#6D28D9"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="📡 Active Transport Mode"
-                    android:textColor="@color/bluetooth_accent"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <RadioGroup
-                    android:id="@+id/rgTransportMode"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:orientation="horizontal">
-
-                    <RadioButton
-                        android:id="@+id/rbWifi"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="🌐 Wi-Fi"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp"
-                        android:checked="true" />
-
-                    <RadioButton
-                        android:id="@+id/rbBluetooth"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="📶 Bluetooth"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp" />
-                </RadioGroup>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Bluetooth Text Communication Card (Phase 8.7) -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardBluetooth"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp"
-            app:strokeColor="@color/bluetooth_accent"
-            app:strokeWidth="1.5dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <!-- Header with Status Indicator -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <TextView
+                        android:id="@+id/tvWifiMetricPayload"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="📶 Bluetooth Transport (Phase 8.7)"
-                        android:textColor="@color/bluetooth_accent"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <TextView
-                        android:id="@+id/tvBtConnectionStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="🔴 Disconnected"
-                        android:textColor="#EF4444"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <!-- Connected Device Name -->
-                <TextView
-                    android:id="@+id/tvBtConnectedDevice"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Device: Not connected"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-
-                <!-- Host / Discover / Disconnect Buttons -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <Button
-                        android:id="@+id/btnBtHost"
-                        style="@style/Widget.MaterialComponents.Button"
+                        android:id="@+id/tvWifiChatLog"
                         android:layout_width="0dp"
-                        android:layout_height="38dp"
-                        android:layout_weight="1"
-                        android:backgroundTint="#7C3AED"
-                        android:text="Host Session"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
-                    <Button
-                        android:id="@+id/btnBtDiscover"
-                        style="@style/Widget.MaterialComponents.Button"
-                        android:layout_width="0dp"
-                        android:layout_height="38dp"
-                        android:layout_weight="1"
-                        android:layout_marginStart="4dp"
-                        android:backgroundTint="#059669"
-                        android:text="Discover"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
-
-                    <Button
-                        android:id="@+id/btnBtDisconnect"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="38dp"
-                        android:layout_marginStart="4dp"
-                        android:text="Stop"
-                        android:textColor="#EF4444"
-                        android:textSize="11sp"
-                        android:enabled="false" />
-                </LinearLayout>
-
-                <!-- Discovered Devices List Container -->
-                <LinearLayout
-                    android:id="@+id/layoutBtDeviceList"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical"
-                    android:background="#0F172A"
-                    android:padding="8dp"
-                    android:visibility="gone">
-
-                    <TextView
-                        android:id="@+id/tvBtDeviceListHeader"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Available Devices:"
-                        android:textColor="@color/bluetooth_accent"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
-                    <!-- Device buttons are added dynamically here -->
-                </LinearLayout>
-
-                <!-- Action Test Buttons -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:orientation="horizontal">
-
+                    <!-- Preserved Bluetooth views -->
                     <Button
                         android:id="@+id/btnBtSendTest"
-                        style="@style/Widget.MaterialComponents.Button"
                         android:layout_width="0dp"
-                        android:layout_height="38dp"
-                        android:layout_weight="1"
-                        android:backgroundTint="#3B82F6"
-                        android:text="💬 Send Test Text"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <Button
                         android:id="@+id/btnBtSendAlert"
-                        style="@style/Widget.MaterialComponents.Button"
                         android:layout_width="0dp"
-                        android:layout_height="38dp"
-                        android:layout_weight="1"
-                        android:layout_marginStart="6dp"
-                        android:backgroundTint="#DC2626"
-                        android:text="🚨 Send Alert"
-                        android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
-                </LinearLayout>
-
-                <!-- Bluetooth Telemetry -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical"
-                    android:background="#0F172A"
-                    android:padding="8dp">
-
-                    <TextView
-                        android:id="@+id/tvBtMetricPayload"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Payload: 0 B (Text) vs 0 KB (PCM) → Dynamic Saving"
-                        android:textColor="#34D399"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
 
                     <TextView
                         android:id="@+id/tvBtMetricLatency"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Sender: -- ms | RTT: -- ms | Receiver: -- ms"
-                        android:textColor="@color/bluetooth_accent"
-                        android:textSize="11sp" />
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvBtMetricPayload"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvBtChatLog"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
                 </LinearLayout>
-
-                <!-- Bluetooth Chat Log -->
-                <TextView
-                    android:id="@+id/tvBtChatLog"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="#1E293B"
-                    android:padding="8dp"
-                    android:text="[Ready] Host or Discover devices to begin Bluetooth text exchange."
-                    android:textColor="#94A3B8"
-                    android:textSize="11sp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </ScrollView>
+    </FrameLayout>
 
-        <!-- Diagnostic / Error Log Area -->
-        <TextView
-            android:id="@+id/tvLog"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:textColor="#EF4444"
-            android:textSize="11sp"
-            android:visibility="gone" />
+    <!-- ── 3. Bottom Navigation Bar ───────────────────────────────── -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigation"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="#FFFFFF"
+        android:elevation="8dp"
+        app:itemIconTint="@color/primary"
+        app:itemTextColor="@color/text_primary"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:menu="@menu/bottom_nav_menu" />
 
-    </LinearLayout>
-</ScrollView>
-
+</androidx.constraintlayout.widget.ConstraintLayout>

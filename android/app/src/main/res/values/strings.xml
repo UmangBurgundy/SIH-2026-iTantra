@@ -75,12 +75,18 @@
     <string name="pack_installed_toast">%1$s language pack installed and ready offline!</string>
     <string name="pack_insufficient_space">Insufficient storage to install %1$s pack. Available: %2$s, Required: %3$s.</string>
     <!-- Phone Call Mode -->
+    <string name="call_title">📞 Phone Call (Full-Duplex Voice)</string>
     <string name="ptt_mode_phone_call">📞 Phone Call</string>
-    <string name="call_hint">Phone-call-like conversation with barge-in support</string>
+    <string name="call_hint">Automatic hands-free conversation with live barge-in interruption</string>
     <string name="call_start">📞 START CALL</string>
     <string name="call_stop">📵 END CALL</string>
     <string name="call_turn_calling">📞 In Call</string>
     <string name="call_turn_barging_in">⚡ Barge-in</string>
+    <string name="call_status_listening_text">Listening…</string>
+    <string name="call_status_speaking_text">You are speaking…</string>
+    <string name="call_status_processing_text">Processing…</string>
+    <string name="call_status_remote_speaking_text">Remote user is speaking…</string>
+    <string name="call_status_interrupting_text">Interrupting…</string>
     <string name="call_state_listening">🎙️ State: IN CALL — LISTENING (Speak anytime)</string>
     <string name="call_state_playing">🔊 State: IN CALL — REMOTE SPEAKING (Speak to interrupt)</string>
     <string name="call_state_interrupted">⚡ State: INTERRUPTED — Processing your interruption…</string>

@@ -1,19 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#1E293B</color>
-    <color name="primary_dark">#0F172A</color>
-    <color name="accent">#38BDF8</color>
-    <color name="accent_green">#22C55E</color>
+    <color name="primary">#2563EB</color>
+    <color name="primary_dark">#1D4ED8</color>
+    <color name="accent">#0284C7</color>
+    <color name="accent_green">#10B981</color>
     <color name="accent_red">#EF4444</color>
-    <color name="card_bg">#1E293B</color>
-    <color name="background">#0F172A</color>
-    <color name="text_primary">#F8FAFC</color>
-    <color name="text_secondary">#94A3B8</color>
+    <color name="accent_amber">#F59E0B</color>
+    <color name="card_bg">#FFFFFF</color>
+    <color name="background">#F8FAFC</color>
+    <color name="surface_variant">#F1F5F9</color>
+    <color name="border_light">#E2E8F0</color>
+    <color name="text_primary">#0F172A</color>
+    <color name="text_secondary">#64748B</color>
+    <color name="text_muted">#94A3B8</color>
     <color name="bluetooth_accent">#8B5CF6</color>
     <color name="ptt_listening_bg">#DC2626</color>
     <color name="ptt_idle_bg">#0284C7</color>
     <color name="ptt_playing_bg">#D97706</color>
     <color name="ptt_card_border">#0EA5E9</color>
     <color name="phone_call_accent">#10B981</color>
-    <color name="phone_call_barge_in">#F59E0B</color>
+    <color name="phone_call_barge_in">#EF4444</color>
 </resources>

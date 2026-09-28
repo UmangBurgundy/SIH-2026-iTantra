@@ -9,46 +9,71 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Controller and state machine for Phone Call Mode.
+ * Configuration parameters for Phone Call Mode and False Barge-In Prevention.
  *
- * Provides a phone-call-like conversational experience with automatic turn-taking
- * and barge-in (interruption) support. Unlike ContinuousConversationController,
- * the microphone remains active during remote TTS playback with elevated VAD
- * thresholds to detect intentional barge-in while preventing acoustic feedback.
+ * @param bargeInEnabled Enables/disables acoustic interruption during remote TTS playback.
+ * @param bargeInConsecutiveFrames Minimum consecutive speech frames (e.g. 4 frames = 120 ms)
+ *        required to confirm intentional user speech before halting remote playback.
+ * @param bargeInSpeechThreshold Minimum absolute RMS threshold required during playback.
+ * @param bargeInSpeechThresholdMultiplier Multiplier (e.g. 1.8x) applied to adaptive noise floor threshold.
+ * @param bargeInMinDurationMs Minimum sustained speech duration in milliseconds (120 ms).
+ * @param settlingDelayMs Acoustic settling delay in milliseconds (150 ms) after remote playback stops.
+ * @param maxUtteranceMs Upper safety limit to prevent runaway capture (15000 ms).
+ */
+data class PhoneCallConfig(
+    val bargeInEnabled: Boolean = true,
+    val bargeInConsecutiveFrames: Int = 4,
+    val bargeInSpeechThreshold: Double = 120.0,
+    val bargeInSpeechThresholdMultiplier: Double = 1.8,
+    val bargeInMinDurationMs: Long = 120L,
+    val settlingDelayMs: Long = 150L,
+    val maxUtteranceMs: Long = 15000L
+)
+
+/**
+ * Controller and explicit state machine for Phone Call Mode.
  *
- * Key differences from ContinuousConversationController:
- * 1. Mic stays active during remote TTS (bargeInMode=true on UtteranceSegmenter)
- * 2. No WAITING_REMOTE state — returns to LISTENING immediately after sending
- * 3. Speech detection during PLAYING_REMOTE triggers barge-in flow
- * 4. Shorter settling delay (150ms vs 200ms)
+ * Provides a natural, full-duplex conversational experience between two Android devices
+ * with automatic turn-taking and robust barge-in (interruption) support.
  *
- * Flow:
- * LISTENING → SPEECH_DETECTED → PROCESSING_STT → SENDING → LISTENING (cycle)
- *            ↕ (barge-in during PLAYING_REMOTE)
- * PLAYING_REMOTE → INTERRUPTED → PROCESSING_STT → SENDING → LISTENING
+ * Explicit State Machine States:
+ * - IDLE: Call not active, waiting for user to start call.
+ * - CALL_CONNECTING: Initiating/handshaking call session.
+ * - CALL_CONNECTED: Call connected and active.
+ * - LISTENING: Microphone continuously monitoring for speech onset.
+ * - SPEECH_DETECTED: Local user speaking, utterance being captured.
+ * - PROCESSING_STT: Local utterance finalized, running STT inference.
+ * - SENDING_TEXT: Transmitting recognized text over transport.
+ * - RECEIVING_TEXT: Incoming text message received from remote peer.
+ * - PLAYING_TTS: Remote TTS synthesizing/playing audio through speaker.
+ * - BARGE_IN: Local user interrupted remote TTS playback.
+ * - CALL_ENDING: Call is terminating and releasing resources.
+ * - DISCONNECTED: Underlying transport not connected.
+ * - ERROR: Error encountered in pipeline or transport.
  */
 class PhoneCallController(
     private val scope: CoroutineScope,
-    private val settlingDelayMs: Long = 150L,
-    /** Minimum consecutive speech frames needed to trigger barge-in during remote TTS */
-    private val bargeInConfirmationFrames: Int = 3,
+    val config: PhoneCallConfig = PhoneCallConfig(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.Main
 ) {
 
     companion object {
-        private const val TAG = "iTantraPhoneCall"
+        const val TAG = "PHONE_CALL"
     }
 
     enum class State {
         DISCONNECTED,
         IDLE,
+        CALL_CONNECTING,
+        CALL_CONNECTED,
         LISTENING,
         SPEECH_DETECTED,
         PROCESSING_STT,
-        SENDING,
-        PLAYING_REMOTE,
-        INTERRUPTED,
-        RETURNING_TO_LISTEN,
+        SENDING_TEXT,
+        RECEIVING_TEXT,
+        PLAYING_TTS,
+        BARGE_IN,
+        CALL_ENDING,
         ERROR
     }
 
@@ -57,8 +82,9 @@ class PhoneCallController(
         YOU_SPEAKING,
         PROCESSING,
         SENDING,
+        RECEIVING,
         REMOTE_SPEAKING,
-        INTERRUPTED,
+        BARGE_IN,
         OFFLINE,
         ERROR
     }
@@ -70,20 +96,17 @@ class PhoneCallController(
     var isCallActive: Boolean = false
         private set
 
-    /** True when remote TTS is playing and mic is in elevated-threshold mode */
+    /** True when remote TTS is playing through the speaker */
     var isRemoteTtsPlaying: Boolean = false
         private set
 
     private var settleJob: Job? = null
 
-    /** Counter for consecutive speech frames during barge-in detection */
-    private var bargeInSpeechFrameCount: Int = 0
-
     // ── Callbacks ──────────────────────────────────────────────────────────
     var onStateChanged: ((State, Turn) -> Unit)? = null
     var onRequestResumeListening: (() -> Unit)? = null
     var onRequestPauseListening: (() -> Unit)? = null
-    /** Called when barge-in is confirmed and remote TTS should be stopped */
+    /** Called when barge-in is confirmed and remote TTS playback must immediately halt */
     var onRequestStopRemoteTts: (() -> Unit)? = null
 
     val state: State get() = currentState
@@ -94,19 +117,22 @@ class PhoneCallController(
     fun setTransportConnected(connected: Boolean) {
         if (isTransportConnected == connected) return
         isTransportConnected = connected
-        Log.i(TAG, "PhoneCall: Transport connected changed: $connected")
+        Log.i(TAG, "Transport connected changed: $connected")
 
         if (!connected) {
             if (isCallActive) {
-                Log.w(TAG, "PhoneCall: Transport lost during active call")
+                Log.w(TAG, "PHONE_CALL: transport lost during active call")
             }
             isRemoteTtsPlaying = false
-            bargeInSpeechFrameCount = 0
+            settleJob?.cancel()
             transitionTo(State.DISCONNECTED)
         } else {
             if (currentState == State.DISCONNECTED) {
                 if (isCallActive) {
+                    Log.i(TAG, "PHONE_CALL: connected")
+                    transitionTo(State.CALL_CONNECTED)
                     transitionTo(State.LISTENING)
+                    Log.i(TAG, "PHONE_CALL: listening started")
                     onRequestResumeListening?.invoke()
                 } else {
                     transitionTo(State.IDLE)
@@ -118,25 +144,28 @@ class PhoneCallController(
     // ── Call Lifecycle ──────────────────────────────────────────────────────
 
     /**
-     * Starts the phone call mode. Requires an active transport connection.
+     * Starts Phone Call Mode. Requires active transport connection.
      */
     fun startCall(): Boolean {
         if (!isTransportConnected) {
-            Log.w(TAG, "PhoneCall: Cannot start - transport disconnected")
+            Log.w(TAG, "Cannot start call - transport disconnected")
             return false
         }
         settleJob?.cancel()
         isCallActive = true
         isRemoteTtsPlaying = false
-        bargeInSpeechFrameCount = 0
-        Log.i(TAG, "PhoneCall: Call started")
+        Log.i(TAG, "Starting phone call...")
+        transitionTo(State.CALL_CONNECTING)
+        transitionTo(State.CALL_CONNECTED)
+        Log.i(TAG, "PHONE_CALL: connected")
         transitionTo(State.LISTENING)
+        Log.i(TAG, "PHONE_CALL: listening started")
         onRequestResumeListening?.invoke()
         return true
     }
 
     /**
-     * Ends the phone call and returns to IDLE/DISCONNECTED.
+     * Ends the active phone call and releases audio/state machine resources.
      */
     fun stopCall() {
         if (!isCallActive && currentState == State.IDLE) return
@@ -144,186 +173,179 @@ class PhoneCallController(
         settleJob = null
         isCallActive = false
         isRemoteTtsPlaying = false
-        bargeInSpeechFrameCount = 0
-        Log.i(TAG, "PhoneCall: Call ended")
+        Log.i(TAG, "PHONE_CALL: call ended")
+        transitionTo(State.CALL_ENDING)
         onRequestPauseListening?.invoke()
         transitionTo(if (isTransportConnected) State.IDLE else State.DISCONNECTED)
     }
 
-    // ── Local Speech Events ────────────────────────────────────────────────
+    // ── Local Speech & Barge-in Events ─────────────────────────────────────
 
     /**
      * Notifies that VAD has detected speech onset or offset.
-     *
-     * Unlike ContinuousConversationController, this method handles speech
-     * detection during PLAYING_REMOTE state for barge-in support.
      */
     fun onSpeechDetected(isSpeech: Boolean) {
         if (!isCallActive) return
 
         when (currentState) {
-            State.PLAYING_REMOTE -> {
-                // Barge-in detection: accumulate consecutive speech frames
-                if (isSpeech) {
-                    bargeInSpeechFrameCount++
-                    Log.d(TAG, "PhoneCall: Barge-in speech frame $bargeInSpeechFrameCount/$bargeInConfirmationFrames")
-                    if (bargeInSpeechFrameCount >= bargeInConfirmationFrames) {
-                        // Confirmed barge-in — interrupt remote TTS
-                        performBargeIn()
-                    }
-                } else {
-                    // Reset counter on silence — not a sustained barge-in attempt
-                    bargeInSpeechFrameCount = 0
+            State.PLAYING_TTS -> {
+                if (isSpeech && config.bargeInEnabled) {
+                    onBargeInConfirmed()
                 }
             }
 
-            State.LISTENING, State.RETURNING_TO_LISTEN -> {
+            State.LISTENING, State.CALL_CONNECTED -> {
                 if (isSpeech) {
-                    Log.i(TAG, "PhoneCall: Speech detected")
+                    Log.i(TAG, "PHONE_CALL: speech detected")
                     transitionTo(State.SPEECH_DETECTED)
                 }
             }
 
             State.SPEECH_DETECTED -> {
                 if (!isSpeech) {
-                    Log.i(TAG, "PhoneCall: Speech offset, waiting for utterance finalization")
-                    // Stay in SPEECH_DETECTED — UtteranceSegmenter will call onUtteranceFinalized
+                    Log.i(TAG, "Speech offset, waiting for utterance finalization...")
                 }
             }
 
-            State.INTERRUPTED -> {
-                // Already handling a barge-in, ignore additional speech events
+            State.BARGE_IN -> {
+                // Already in barge-in interruption state
             }
 
             else -> {
-                // Ignore speech during PROCESSING_STT, SENDING, etc.
+                // Ignore speech during STT inference or sending
             }
         }
     }
 
     /**
+     * Confirms that intentional barge-in speech was detected while remote TTS was playing.
+     * Halts remote playback immediately and routes the captured speech to STT.
+     */
+    fun onBargeInConfirmed() {
+        if (!isCallActive) return
+        if (currentState != State.PLAYING_TTS && !isRemoteTtsPlaying) return
+        if (!config.bargeInEnabled) return
+
+        Log.i(TAG, "PHONE_CALL: barge-in detected")
+        isRemoteTtsPlaying = false
+        settleJob?.cancel()
+
+        transitionTo(State.BARGE_IN)
+
+        // Stop remote TTS immediately
+        onRequestStopRemoteTts?.invoke()
+        Log.i(TAG, "PHONE_CALL: playback interrupted")
+    }
+
+    /**
      * Called when UtteranceSegmenter finalizes an utterance.
      */
-    fun onUtteranceFinalized() {
+    fun onUtteranceFinalized(durationMs: Long = 0L) {
         if (!isCallActive) return
-        if (currentState == State.SPEECH_DETECTED || currentState == State.INTERRUPTED || currentState == State.LISTENING) {
-            Log.i(TAG, "PhoneCall: Utterance finalized")
+        if (currentState == State.SPEECH_DETECTED || currentState == State.BARGE_IN || currentState == State.LISTENING) {
+            Log.i(TAG, "PHONE_CALL: utterance finalized (${durationMs}ms)")
             transitionTo(State.PROCESSING_STT)
+            Log.i(TAG, "PHONE_CALL: STT started")
         }
     }
 
     /**
      * Called when STT completes with transcribed text.
      */
-    fun onSttComplete(hasValidText: Boolean) {
+    fun onSttComplete(hasValidText: Boolean, text: String = "", latencyMs: Long = 0L) {
         if (!isCallActive) return
 
         if (hasValidText) {
-            Log.i(TAG, "PhoneCall: STT complete → transitioning to SENDING")
-            transitionTo(State.SENDING)
+            Log.i(TAG, "PHONE_CALL: STT completed (${latencyMs}ms, text: '$text')")
+            transitionTo(State.SENDING_TEXT)
+            Log.i(TAG, "PHONE_CALL: sending text")
         } else {
-            Log.i(TAG, "PhoneCall: STT produced empty text → returning to LISTENING")
+            Log.i(TAG, "PHONE_CALL: STT completed (empty text)")
             transitionTo(State.LISTENING)
+            Log.i(TAG, "PHONE_CALL: listening started")
             onRequestResumeListening?.invoke()
         }
     }
 
     /**
-     * Called when the message has been sent through the active transport.
-     * Unlike ContinuousConversationController, returns to LISTENING immediately
-     * (no WAITING_REMOTE state) for a more fluid conversation flow.
+     * Called when the text message has been sent through the transport layer.
      */
-    fun onMessageSent() {
+    fun onMessageSent(sendDurationMs: Long = 0L) {
         if (!isCallActive) return
-        Log.i(TAG, "PhoneCall: Message sent → returning to LISTENING")
+        Log.i(TAG, "Message transmitted in ${sendDurationMs}ms")
         transitionTo(State.LISTENING)
+        Log.i(TAG, "PHONE_CALL: listening started")
         onRequestResumeListening?.invoke()
     }
 
-    // ── Remote TTS Events ──────────────────────────────────────────────────
+    // ── Remote Message & Playback Events ───────────────────────────────────
 
     /**
-     * Called when remote message received and TTS begins playback.
-     *
-     * Unlike ContinuousConversationController, this does NOT pause the microphone.
-     * Instead, it signals the UtteranceSegmenter to enter bargeInMode for elevated
-     * speech detection thresholds that prevent acoustic feedback.
+     * Called when a remote text message is received.
      */
-    fun onRemoteTtsStarted() {
-        settleJob?.cancel()
-        isRemoteTtsPlaying = true
-        bargeInSpeechFrameCount = 0
-        Log.i(TAG, "PhoneCall: Remote TTS started (mic active, bargeIn enabled)")
-        // Do NOT pause listening — this is the key difference from ContinuousConversation
-        transitionTo(State.PLAYING_REMOTE)
+    fun onRemoteMessageReceived(text: String, language: String) {
+        if (!isCallActive) return
+        Log.i(TAG, "PHONE_CALL: text received (language: $language, text: '$text')")
+        transitionTo(State.RECEIVING_TEXT)
     }
 
     /**
-     * Called when remote TTS finishes playing through the speaker.
-     * Applies a short settling delay before fully restoring normal VAD sensitivity.
+     * Called when TTS begins synthesizing and playing remote speech through the speaker.
+     */
+    fun onRemoteTtsStarted() {
+        if (!isCallActive) return
+        settleJob?.cancel()
+        isRemoteTtsPlaying = true
+        Log.i(TAG, "PHONE_CALL: TTS started")
+        Log.i(TAG, "PHONE_CALL: playback started")
+        transitionTo(State.PLAYING_TTS)
+    }
+
+    /**
+     * Called when remote TTS completes playback naturally (not interrupted).
      */
     fun onRemoteTtsFinished() {
-        Log.i(TAG, "PhoneCall: Remote TTS completed")
+        if (currentState == State.BARGE_IN || currentState == State.SPEECH_DETECTED) {
+            Log.d(TAG, "Ignoring remote TTS finish callback: Barge-in active")
+            return
+        }
+
+        Log.i(TAG, "Remote playback completed naturally")
         isRemoteTtsPlaying = false
-        bargeInSpeechFrameCount = 0
 
         if (!isCallActive) {
             transitionTo(if (isTransportConnected) State.IDLE else State.DISCONNECTED)
             return
         }
 
-        transitionTo(State.RETURNING_TO_LISTEN)
         settleJob?.cancel()
         settleJob = scope.launch(dispatcher) {
-            Log.i(TAG, "PhoneCall: Acoustic settling period ($settlingDelayMs ms)...")
-            delay(settlingDelayMs)
-            if (isCallActive && isTransportConnected) {
-                Log.i(TAG, "PhoneCall: Settling complete, resuming normal listening")
+            delay(config.settlingDelayMs)
+            if (isCallActive && isTransportConnected && (currentState == State.PLAYING_TTS || currentState == State.RECEIVING_TEXT)) {
                 transitionTo(State.LISTENING)
-                // Mic is already running, just signal resume for state consistency
+                Log.i(TAG, "PHONE_CALL: listening started")
                 onRequestResumeListening?.invoke()
-            } else {
-                transitionTo(if (isTransportConnected) State.IDLE else State.DISCONNECTED)
             }
         }
     }
 
-    // ── Barge-In ───────────────────────────────────────────────────────────
-
-    /**
-     * Performs the barge-in: stops remote TTS and transitions to processing
-     * the interrupting local speech.
-     */
-    private fun performBargeIn() {
-        Log.i(TAG, "PhoneCall: ═══ BARGE-IN CONFIRMED ═══ Interrupting remote TTS")
-        isRemoteTtsPlaying = false
-        bargeInSpeechFrameCount = 0
-        settleJob?.cancel()
-
-        // Stop the remote TTS audio immediately
-        onRequestStopRemoteTts?.invoke()
-
-        // Transition to INTERRUPTED state — utterance segmenter will finalize the speech
-        transitionTo(State.INTERRUPTED)
-    }
-
-    // ── Error ──────────────────────────────────────────────────────────────
+    // ── Error Handling ─────────────────────────────────────────────────────
 
     fun onError(errorMessage: String) {
-        Log.e(TAG, "PhoneCall: Error - $errorMessage")
+        Log.e(TAG, "PHONE_CALL: error: $errorMessage")
         isRemoteTtsPlaying = false
-        bargeInSpeechFrameCount = 0
         transitionTo(State.ERROR)
     }
 
-    // ── State Machine ──────────────────────────────────────────────────────
+    // ── State Machine Internal ─────────────────────────────────────────────
 
     @Synchronized
     private fun transitionTo(targetState: State) {
         if (currentState == targetState) return
+        val previousState = currentState
         currentState = targetState
         val turn = getTurnForState(targetState)
-        Log.i(TAG, "PhoneCall: State → $targetState (Turn: $turn)")
+        Log.i(TAG, "State: $previousState → $targetState (Turn: $turn)")
         onStateChanged?.invoke(targetState, turn)
     }
 
@@ -331,13 +353,16 @@ class PhoneCallController(
         return when (state) {
             State.DISCONNECTED -> Turn.OFFLINE
             State.IDLE -> Turn.YOUR_TURN
+            State.CALL_CONNECTING -> Turn.PROCESSING
+            State.CALL_CONNECTED -> Turn.YOUR_TURN
             State.LISTENING -> Turn.YOUR_TURN
             State.SPEECH_DETECTED -> Turn.YOU_SPEAKING
             State.PROCESSING_STT -> Turn.PROCESSING
-            State.SENDING -> Turn.SENDING
-            State.PLAYING_REMOTE -> Turn.REMOTE_SPEAKING
-            State.INTERRUPTED -> Turn.INTERRUPTED
-            State.RETURNING_TO_LISTEN -> Turn.YOUR_TURN
+            State.SENDING_TEXT -> Turn.SENDING
+            State.RECEIVING_TEXT -> Turn.RECEIVING
+            State.PLAYING_TTS -> Turn.REMOTE_SPEAKING
+            State.BARGE_IN -> Turn.BARGE_IN
+            State.CALL_ENDING -> Turn.PROCESSING
             State.ERROR -> Turn.ERROR
         }
     }

@@ -3,6 +3,7 @@ package org.itantra.speech
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import org.itantra.speech.interaction.PhoneCallConfig
 import org.itantra.speech.interaction.PhoneCallController
 import org.junit.Assert.*
 import org.junit.Before
@@ -10,19 +11,6 @@ import org.junit.Test
 
 /**
  * Unit tests for PhoneCallController (Phone Call Mode & Full-Duplex Barge-In).
- *
- * Validates:
- * 1. Initial State & Transport Connection Handling
- * 2. Call Lifecycle (startCall, stopCall, guards)
- * 3. Speech Detection, Utterance Finalization & Turn Taking
- * 4. STT Handling (Valid text vs Empty text fallback)
- * 5. Immediate Return to Listening after Send (No WAITING_REMOTE)
- * 6. Remote TTS Playback without Mic Pausing (Full-Duplex)
- * 7. Acoustic Settling Delay (50ms test settling delay)
- * 8. Barge-In Interruption Confirmation (consecutive frames threshold)
- * 9. Stop Remote TTS Callback Invocation on Confirmed Barge-In
- * 10. Transport Disconnection during Active Call & Auto-Resume
- * 11. Error State Transition
  */
 class PhoneCallControllerTest {
 
@@ -43,10 +31,14 @@ class PhoneCallControllerTest {
         lastState = null
         lastTurn = null
 
+        val config = PhoneCallConfig(
+            settlingDelayMs = 50L,
+            bargeInConsecutiveFrames = 3
+        )
+
         controller = PhoneCallController(
             scope = testScope,
-            settlingDelayMs = 50L,
-            bargeInConfirmationFrames = 3,
+            config = config,
             dispatcher = Dispatchers.Default
         ).apply {
             onStateChanged = { state, turn ->
@@ -133,10 +125,10 @@ class PhoneCallControllerTest {
 
         // 3. STT complete with valid text
         controller.onSttComplete(hasValidText = true)
-        assertEquals(PhoneCallController.State.SENDING, controller.state)
+        assertEquals(PhoneCallController.State.SENDING_TEXT, controller.state)
         assertEquals(PhoneCallController.Turn.SENDING, controller.turn)
 
-        // 4. Message sent -> Returns directly to LISTENING (no WAITING_REMOTE)
+        // 4. Message sent -> Returns directly to LISTENING
         controller.onMessageSent()
         assertEquals(PhoneCallController.State.LISTENING, controller.state)
         assertEquals(PhoneCallController.Turn.YOUR_TURN, controller.turn)
@@ -148,6 +140,7 @@ class PhoneCallControllerTest {
         controller.startCall()
 
         controller.onSpeechDetected(true)
+        assertEquals(PhoneCallController.State.SPEECH_DETECTED, controller.state)
         controller.onUtteranceFinalized()
         assertEquals(PhoneCallController.State.PROCESSING_STT, controller.state)
 
@@ -166,20 +159,18 @@ class PhoneCallControllerTest {
 
         // Remote TTS starts
         controller.onRemoteTtsStarted()
-        assertEquals(PhoneCallController.State.PLAYING_REMOTE, controller.state)
+        assertEquals(PhoneCallController.State.PLAYING_TTS, controller.state)
         assertEquals(PhoneCallController.Turn.REMOTE_SPEAKING, controller.turn)
         assertTrue(controller.isRemoteTtsPlaying)
         // Mic was NOT requested to pause (Full-duplex design)
         assertEquals(0, pauseListeningCount)
 
-        // Remote TTS finishes -> transitions to RETURNING_TO_LISTEN
+        // Remote TTS finishes -> settling delay then back to LISTENING
         controller.onRemoteTtsFinished()
         assertFalse(controller.isRemoteTtsPlaying)
-        assertEquals(PhoneCallController.State.RETURNING_TO_LISTEN, controller.state)
-        assertEquals(PhoneCallController.Turn.YOUR_TURN, controller.turn)
 
         // Wait for settling delay (50ms)
-        Thread.sleep(100)
+        Thread.sleep(150)
         assertEquals(PhoneCallController.State.LISTENING, controller.state)
         assertEquals(PhoneCallController.Turn.YOUR_TURN, controller.turn)
     }
@@ -191,23 +182,13 @@ class PhoneCallControllerTest {
 
         // Remote TTS is playing
         controller.onRemoteTtsStarted()
-        assertEquals(PhoneCallController.State.PLAYING_REMOTE, controller.state)
+        assertEquals(PhoneCallController.State.PLAYING_TTS, controller.state)
         assertEquals(0, stopRemoteTtsCount)
 
-        // 1st speech frame (not enough for 3-frame confirmation threshold)
-        controller.onSpeechDetected(true)
-        assertEquals(PhoneCallController.State.PLAYING_REMOTE, controller.state)
-        assertEquals(0, stopRemoteTtsCount)
-
-        // 2nd speech frame
-        controller.onSpeechDetected(true)
-        assertEquals(PhoneCallController.State.PLAYING_REMOTE, controller.state)
-        assertEquals(0, stopRemoteTtsCount)
-
-        // 3rd consecutive speech frame -> Confirms barge-in!
-        controller.onSpeechDetected(true)
-        assertEquals(PhoneCallController.State.INTERRUPTED, controller.state)
-        assertEquals(PhoneCallController.Turn.INTERRUPTED, controller.turn)
+        // UtteranceSegmenter confirms barge-in via onBargeInConfirmed
+        controller.onBargeInConfirmed()
+        assertEquals(PhoneCallController.State.BARGE_IN, controller.state)
+        assertEquals(PhoneCallController.Turn.BARGE_IN, controller.turn)
         assertEquals(1, stopRemoteTtsCount) // Remote TTS audio stopped immediately!
         assertFalse(controller.isRemoteTtsPlaying)
 
@@ -216,41 +197,14 @@ class PhoneCallControllerTest {
         assertEquals(PhoneCallController.State.PROCESSING_STT, controller.state)
         assertEquals(PhoneCallController.Turn.PROCESSING, controller.turn)
 
-        // STT completes -> SENDING
+        // STT completes -> SENDING_TEXT
         controller.onSttComplete(hasValidText = true)
-        assertEquals(PhoneCallController.State.SENDING, controller.state)
+        assertEquals(PhoneCallController.State.SENDING_TEXT, controller.state)
 
         // Sent -> Back to LISTENING
         controller.onMessageSent()
         assertEquals(PhoneCallController.State.LISTENING, controller.state)
-    }
-
-    @Test
-    fun testBargeInResetOnSilence() {
-        controller.setTransportConnected(true)
-        controller.startCall()
-
-        controller.onRemoteTtsStarted()
-        assertEquals(PhoneCallController.State.PLAYING_REMOTE, controller.state)
-
-        // 2 frames of speech then silence
-        controller.onSpeechDetected(true)
-        controller.onSpeechDetected(true)
-        controller.onSpeechDetected(false) // Silence resets counter
-
-        // Next speech frame should start counter from 1 again
-        controller.onSpeechDetected(true)
-        assertEquals(PhoneCallController.State.PLAYING_REMOTE, controller.state)
-        assertEquals(0, stopRemoteTtsCount)
-
-        controller.onSpeechDetected(true)
-        assertEquals(PhoneCallController.State.PLAYING_REMOTE, controller.state)
-        assertEquals(0, stopRemoteTtsCount)
-
-        // 3rd consecutive frame in the new streak triggers barge-in
-        controller.onSpeechDetected(true)
-        assertEquals(PhoneCallController.State.INTERRUPTED, controller.state)
-        assertEquals(1, stopRemoteTtsCount)
+        assertEquals(PhoneCallController.Turn.YOUR_TURN, controller.turn)
     }
 
     @Test

@@ -28,11 +28,10 @@ class OnnxWhisperBackend(
         Log.i(TAG, "Initializing $modelName...")
         try {
             // Check ONNX Runtime environment
-            val ortClass = try {
+            try {
                 Class.forName("ai.onnxruntime.OrtEnvironment")
             } catch (e: ClassNotFoundException) {
                 Log.w(TAG, "ONNX Runtime classes not linked: ${e.message}")
-                null
             }
 
             _loadDurationMs = SystemClock.elapsedRealtime() - t0
